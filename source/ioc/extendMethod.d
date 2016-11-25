@@ -7,6 +7,8 @@ import std.typecons;
 
 import ioc.meta;
 
+const logGeneratedCode = false;
+
 template chooseOverload(overloads, T...){
 	static assert (overloads.length > 0);
 	static if (accepts!(overloads[0], T))
@@ -54,18 +56,18 @@ interface Interceptor(Inter, string fooName, T...) if (is(Inter == interface)) {
 }
 
 class InterceptorAdapter(Inter, string fooName): Interceptor!(Inter, fooName){
-	void before(params p){}
+	override void before(params p){}
 	static if (is(returned == void))
-		returned after(params p){}
+		override returned after(params p){}
 	else
-		returned after(params p, returned r){ return r; }
+		override returned after(params p, returned r){ return r; }
 	
-	void scopeExit(params p, Throwable t){}
-	void scopeSuccess(params p){}
-	void scopeFailure(params p, Throwable t){}
+	override void scopeExit(params p, Throwable t){}
+	override void scopeSuccess(params p){}
+	override void scopeFailure(params p, Throwable t){}
 	
 	//static if (!is(returned == void))
-	returned hijackException(Throwable t) { throw t; }
+	override returned hijackException(Throwable t) { throw t; }
 }
 
 template ExtendMethod(Impl, TheInterceptor) {
@@ -182,11 +184,13 @@ template ExtendMethod(Impl, TheInterceptor) {
 	}
 
 	version(unittest) {
-		pragma(msg, "- ExtendMethod ---------------------");
-		pragma(msg, "Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
-		pragma(msg, "Result class name: ", className());
-		pragma(msg, overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
-		pragma(msg, "= ExtendMethod =====================");
+	    static if (logGeneratedCode) {
+		    pragma(msg, "- ExtendMethod ---------------------");
+		    pragma(msg, "Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
+		    pragma(msg, "Result class name: ", className());
+		    pragma(msg, overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
+		    pragma(msg, "= ExtendMethod =====================");
+		}
 	}
 
 	/*class ExtendMethodImpl: Impl {
@@ -214,108 +218,108 @@ version(unittest){
 	}
 	
 	class TestImplementation: TestInterface {
-		void foo(){
+		override void foo(){
 			LogEntries.add("foo()");
 		}
 		
-		int bar(float x){
+		override int bar(float x){
 			LogEntries.add("bar(", x, ")");
 			return to!int(x);
 		}
 		
-		void baz(){
+		override void baz(){
 			LogEntries.add("baz()");
 			throw new Exception("ABC");
 		}
 		
-		int baz2(int x){
+		override int baz2(int x){
 			LogEntries.add("baz2(", x, ")");
 			throw new Exception("ABC "~to!string(x));
 		}
 	}
 	
 	class BeforeAfterVoid: InterceptorAdapter!(TestInterface, "foo") {
-		void before(){
+		override void before(){
 			LogEntries.add("foo BEFORE");
 		}
-		void after(){
+		override void after(){
 			LogEntries.add("foo AFTER");
 		}
 	}
 	
 	class BeforeAfterReturned: InterceptorAdapter!(TestInterface, "bar") {
-		void before(float x){
+		override void before(float x){
 			LogEntries.add("bar BEFORE ", x);
 		}
-		int after(float x, int r){
+		override int after(float x, int r){
 			LogEntries.add("bar AFTER ", x, " ", r);
 			return r+1;
 		}
 	}
 	
 	class ScopeSuccessNoParams: InterceptorAdapter!(TestInterface, "foo") {
-		void scopeSuccess(){
+		override void scopeSuccess(){
 			LogEntries.add("Success");
 		}
 	}
 
 	class ScopeExitNoParams: InterceptorAdapter!(TestInterface, "foo") {
-		void scopeExit(Throwable t){
+		override void scopeExit(Throwable t){
 			LogEntries.add("Exit ", t);
 		}
 	}
 
 	class ScopeFailureNoParams: InterceptorAdapter!(TestInterface, "baz") {
-		void scopeFailure(Throwable t){
+		override void scopeFailure(Throwable t){
 			LogEntries.add("Fail ", t.msg);
 		}
 	}
 
 	class ScopeSuccessParams: InterceptorAdapter!(TestInterface, "bar") {
-		void scopeSuccess(float x){
+		override void scopeSuccess(float x){
 			LogEntries.add("Success ", x);
 		}
 	}
 	
 	class ScopeExitParams: InterceptorAdapter!(TestInterface, "bar") {
-		void scopeExit(float x, Throwable t){
+		override void scopeExit(float x, Throwable t){
 			LogEntries.add("Exit ", x, " ", t);
 		}
 	}
 	
 	class ScopeFailureParams: InterceptorAdapter!(TestInterface, "baz2") {
-		void scopeFailure(int z, Throwable t){
+		override void scopeFailure(int z, Throwable t){
 			LogEntries.add("Fail ", z, " ", t.msg);
 		}
 	}
 
 	class ExceptionHijackVoid: InterceptorAdapter!(TestInterface, "baz"){
-		void hijackException(Throwable t) { 
+		override void hijackException(Throwable t) { 
 			LogEntries.add("hijacked void");
 		}
 	}
 
 	class ExceptionHijackNonVoid: InterceptorAdapter!(TestInterface, "baz2"){
-		int hijackException(Throwable t) { 
+		override int hijackException(Throwable t) { 
 			LogEntries.add("hijacked ", t.msg);
 			return 8;
 		}
 	}
 
 	class FirstInterceptor: InterceptorAdapter!(TestInterface, "foo"){
-		void before(){
+		override void before(){
 			LogEntries.add("foo FIRST BEFORE");
 		}
-		void after(){
+		override void after(){
 			LogEntries.add("foo FIRST AFTER");
 		}
 	}
 
 	class SecondInterceptor: InterceptorAdapter!(TestInterface, "foo"){
-		void before(){
+		override void before(){
 			LogEntries.add("foo SECOND BEFORE");
 		}
-		void after(){
+		override void after(){
 			LogEntries.add("foo SECOND AFTER");
 		}
 	}

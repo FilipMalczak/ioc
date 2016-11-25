@@ -22,11 +22,11 @@ version(unittest){
 	}
 
 	class TestImpl: TestInterface{
-		void foo(int x){
+		override void foo(int x){
 			LogEntries.add("IMPL foo ", x);
 		}
 
-		string bar(float f){
+		override string bar(float f){
 			LogEntries.add("IMPL bar ", f);
 			return to!string(f);
 		}
@@ -39,49 +39,49 @@ version(unittest){
 			arg = b;
 		}
 
-		void foo(int x){
+		override void foo(int x){
 			LogEntries.add("IMPL foo ", arg, " ", x);
 		}
 		
-		string bar(float f){
+		override string bar(float f){
 			LogEntries.add("IMPL bar ", arg, " ",  f);
 			return to!string(f);
 		}
 	}
 
 	class FirstFooInterceptor: InterceptorAdapter!(TestInterface, "foo"){
-		void before(int x){
+		override void before(int x){
 			LogEntries.add("First foo before ", x);
 		}
-		void after(int x){
+		override void after(int x){
 			LogEntries.add("First foo after ", x);
 		}
 	}
 
 	class SecondFooInterceptor: InterceptorAdapter!(TestInterface, "foo"){
-		void before(int x){
+		override void before(int x){
 			LogEntries.add("Second foo before ", x);
 		}
-		void after(int x){
+		override void after(int x){
 			LogEntries.add("Second foo after ", x);
 		}
 	}
 
 	class FirstBarInterceptor: InterceptorAdapter!(TestInterface, "bar"){
-		void before(float f){
+		override void before(float f){
 			LogEntries.add("First bar before ", f);
 		}
-		string after(float f, string s){
+		override string after(float f, string s){
 			LogEntries.add("First bar after ", f, " ", s);
 			return s~"+first";
 		}
 	}
 
 	class SecondBarInterceptor: InterceptorAdapter!(TestInterface, "bar"){
-		void before(float f){
+		override void before(float f){
 			LogEntries.add("Second bar before ", f);
 		}
-		string after(float f, string s){
+		override string after(float f, string s){
 			LogEntries.add("Second bar after ", f, " ", s);
 			return s~"+second";
 		}

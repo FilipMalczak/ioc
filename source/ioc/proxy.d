@@ -7,6 +7,8 @@ import std.traits;
 import std.stdio;
 import std.typecons;
 
+const bool logGeneratedCode = false;
+
 template Proxy(Original){
 	string methodsString(){
 		string result = "";
@@ -23,9 +25,11 @@ template Proxy(Original){
 		this(Original target){ _target = target; }
 
 		version(unittest){
-			pragma(msg, "- Proxy ----------------------------");
-			pragma(msg, methodsString());
-			pragma(msg, "====================================");
+		    static if (logGeneratedCode) {
+			    pragma(msg, "- Proxy ----------------------------");
+			    pragma(msg, methodsString());
+			    pragma(msg, "====================================");
+			}
 		}
 		mixin(methodsString());
 	}

@@ -4,6 +4,8 @@ version(unittest){
 	import std.conv;
 	import std.algorithm.searching;
 	
+	import ioc.scan;
+	
 	struct GenericLogEntries(E) {
 		static E[] entries = [];
 		
@@ -36,4 +38,9 @@ version(unittest){
 	}
 	
 	alias LogEntries = GenericLogEntries!string;
+	
+	enum SimpleAnnotation;
+	
+	@Stereotype
+	enum SimpleStereotype;
 }
