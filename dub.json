@@ -1,0 +1,7 @@
+{
+    "name": "ioc",
+    "targetName": "ioc",
+    "targetType": "executable",
+    "targetPath": "bin",
+    "preGenerateCommands": ["rdmd generate_index.d source"]
+}
