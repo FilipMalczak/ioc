@@ -20,18 +20,13 @@ template aModule(string name){
 }
 
 struct FunctionParameter {
-//struct FunctionParameter(alias defaultVal) {
 	string type;
 	string name;
-	//alias defaultValue = defaultVal;
 
 	static int unnamedParams = 0;
 
 	@property string forImplementation(){
-		//static if (is(defaultValue == void))
-			return type~" "~name;
-		//else
-		//	return type~" "~name~" = "~defaultValue.stringOf;
+		return type~" "~name;
 	}
 
 	@property string forDeclaration(){
@@ -238,3 +233,28 @@ unittest {
 	static assert (!accepts!(__traits(getOverloads, X, "foo2")[0], int));
 	static assert (!accepts!(__traits(getOverloads, X, "foo2")[0], string));
 }
+
+// todo: need to rethink that idea
+//template apply(alias foo, T=string){
+//    void impl(T arg)(){
+//        foo(arg);
+//    }
+//    alias apply = impl;
+//}
+
+//version(unittest){
+//    struct Helper {
+//        static string val = "";
+//    }
+//    
+//    void useHelper(string s){
+//        Helper.val = s;
+//    }
+//    
+//    template useAndCheck(string dummy="dummy"){
+//        apply!(useHelper, dummy)();
+//        alias useAndCheck = Helper.val == dummy;
+//    }
+//    
+//    static assert(useAndCheck!("dummy text"));
+//}

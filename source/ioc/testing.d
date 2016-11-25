@@ -4,13 +4,13 @@ version(unittest){
 	import std.conv;
 	import std.algorithm.searching;
 	
-	struct LogEntries {
-		static string[] entries = [];
+	struct GenericLogEntries(E) {
+		static E[] entries = [];
 		
-		static private string stringize(T...)(T args){
-			string result = "";
+		static private E stringize(T...)(T args){
+			E result = "";
 			foreach (a; args)
-				result ~= to!string(a);
+				result ~= to!E(a);
 			return result;
 		}
 		
@@ -34,4 +34,6 @@ version(unittest){
 			entries = [];
 		}
 	}
+	
+	alias LogEntries = GenericLogEntries!string;
 }
