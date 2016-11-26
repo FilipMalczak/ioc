@@ -4,7 +4,7 @@ version(unittest){
 	import std.conv;
 	import std.algorithm.searching;
 	
-	import ioc.scan;
+	import ioc.stereotypes;
 	
 	struct GenericLogEntries(E) {
 		static E[] entries = [];
@@ -22,6 +22,17 @@ version(unittest){
 		
 		static bool contains(T...)(T args){
 			return entries.canFind(stringize(args));
+		}
+		
+		static bool containsAll(E[] args){
+		    foreach (a; args)
+		        if (!contains(a))
+		            return false;
+		    return true;
+		}
+		
+		static bool isSetEqual(E[] args){
+		    return args.length == entries.length && containsAll(args);
 		}
 		
 		static expect(T...)(T args){

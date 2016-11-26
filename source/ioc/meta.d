@@ -14,10 +14,34 @@ template allInterfaces(Original){
 		alias allInterfaces = InterfacesTuple!Original;
 }
 
+/*
+ * 1st approach
+ */
 template aModule(string name){
 	mixin("import "~name~";");
 	mixin("alias aModule = "~name~";");
 }
+
+/*
+ * 2nd approach
+ */
+mixin template importModuleAs(string modName, string aliasName){
+    mixin("import "~modName~";");
+    mixin("alias "~aliasName~" = "~modName~";");
+}
+
+/*
+ * 3rd approach
+ */
+//mixin template importModule(string name){
+//    mixin("import "~name~";");
+//}
+
+//mixin template t_alias(string name, string currentName){
+//    mixin("alias "~name~" = "~currentName~";");
+//}
+
+//todo: which way is better?
 
 struct FunctionParameter {
 	string type;
