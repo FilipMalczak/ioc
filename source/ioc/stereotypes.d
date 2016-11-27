@@ -66,30 +66,30 @@ unittest{
  * @S stereotype - struct or enum
  * @moduleAlias name of module to be scanned for stereotypes
  * @templateToApply anything that can be applied as templateToApply!(target)() 
- *                  where target is alias which has UDA
+ *                  where target is type which has UDA
  */
-template forEachWithStereotypeInModule(S, string moduleName, alias templateToApply) if(isStereotype!(S)) {
-    void impl(){
+struct EachWithStereotypeInModule(S, string moduleName, alias TemplateToApply) if(isStereotype!(S)) {
+    static void run(){
         mixin importModuleAs!(moduleName, "moduleAlias");
         foreach (symbol; __traits(allMembers, moduleAlias)) {
             mixin("alias symbolAlias = "~moduleName~"."~symbol~";");
             static if (hasUDA!(symbolAlias, S)) {
-                alias foo = templateToApply!(symbolAlias);
-                foo();
+                TemplateToApply!(symbolAlias).run();
             }
         }
-    }
-    alias forEachWithStereotypeInModule = impl;
+    };
 }
 
 version(unittest){
-    template logEntriesWithCast(S){
-        alias logEntriesWithCast = useLogEntries!(fullyQualifiedName!S);
+    struct LogEntriesWithCast(S){
+        static void run() {
+            UseLogEntries!(fullyQualifiedName!S).run();
+        }
     }
 }
 
 unittest{
-    forEachWithStereotypeInModule!(Stereotype, __MODULE__, logEntriesWithCast)();
+    EachWithStereotypeInModule!(Stereotype, __MODULE__, LogEntriesWithCast).run();
     assert (LogEntries.isSetEqual([fullyQualifiedName!Ann, fullyQualifiedName!AnnWithFields, fullyQualifiedName!AnnStr, fullyQualifiedName!AnnStrWithParams]));
     LogEntries.reset();
 }
@@ -100,22 +100,20 @@ unittest{
  * @templateToApply anything that can be applied as templateToApply!(target)() 
  *                  where target is alias which has UDA
  */
-template scanForStereotype(S, string pkgName, alias templateToApply){
-    template doApply(string modName){
-        void implApply(){
-            forEachWithStereotypeInModule!(S, modName, templateToApply)();
-        }
-        alias doApply = implApply;
+struct ScanForStereotype(S, string pkgName, alias TemplateToApply){
+    struct DoApply(string modName){
+        static void run(){
+            EachWithStereotypeInModule!(S, modName, TemplateToApply).run();
+        };
     }
 
-    void impl(){
-        depthFirst!(pkgName, doApply)();
-    }
-    alias scanForStereotype = impl;
+    static void run(){
+        DepthFirst!(pkgName, DoApply).run();
+    };
 }
 
 unittest {
     import toppkg.a: MyStereotype;
-    scanForStereotype!(MyStereotype, "toppkg", logEntriesWithCast)();
+    ScanForStereotype!(MyStereotype, "toppkg", LogEntriesWithCast).run();
     assert (LogEntries.isSetEqual(["toppkg.sub.y.Y", "toppkg.a.A", "toppkg.b.B", "toppkg.b.BC"]));
 }

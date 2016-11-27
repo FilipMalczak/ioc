@@ -14,40 +14,36 @@ template getPackageIndex(string name){
 
 /**
  * @name name of the package to be traversed
- * @moduleNameCallback anything that can be applied as moduleNameCallback!(submodule)()
+ * @ModuleNameCallback anything that can be applied as ModuleNameCallback!(string submodule).run()
  */
-template depthFirst(string name, alias moduleNameCallback){
-    void impl(){
+struct DepthFirst(string name, alias ModuleNameCallback){
+    static void run(){
         foreach(subpkg; EnumMembers!(getPackageIndex!(name).subpackages))
-            depthFirst!(subpkg, moduleNameCallback)();
+            DepthFirst!(subpkg, ModuleNameCallback).run();
         foreach(submodule; EnumMembers!(getPackageIndex!(name).submodules)) {
-            alias foo = moduleNameCallback!(submodule);
-            foo();
+            ModuleNameCallback!(submodule).run();
         }
     }
-    alias depthFirst = impl;
 }
 
 version(unittest){
     import std.stdio;
 
-    template wln(string txt){
-        void impl(){
+    struct Wln(string txt){
+        static void run(){
             writeln(txt);
         }
-        alias wln = impl;
     }
     
-    template useLogEntries(string s){
-        void impl(){
+    struct UseLogEntries(string s){
+        static void run(){
             LogEntries.add(s);
         }
-        alias useLogEntries = impl;
     }
 }
 
 unittest {
-    depthFirst!("toppkg", useLogEntries)();
+    DepthFirst!("toppkg", UseLogEntries).run();
     assert(LogEntries.entries == ["toppkg.subpkg.x", "toppkg.sub", "toppkg.sub.y", "toppkg", "toppkg.a", "toppkg.b"]);
     LogEntries.reset();
 }

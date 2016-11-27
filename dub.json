@@ -3,5 +3,9 @@
     "targetName": "ioc",
     "targetType": "executable",
     "targetPath": "bin",
-    "preGenerateCommands": ["rdmd generate_index.d source"]
+    "preGenerateCommands": ["rdmd generate_index.d source"],
+    "dflags": ["-d"],
+    "dependencies": {
+        "poodinis": "~>7.0.1"
+    }
 }
