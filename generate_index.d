@@ -35,7 +35,7 @@ void main(string[] args){
             //pkgFile.writeln("    enum submodules = [");
             //pkgFile.writeln("    static pure nothrow immutable string[] submodules = [");
             foreach(DirEntry d2; dirEntries(d.name, SpanMode.shallow)){
-                if (d2.isFile && d2.name.extension == ".d" && d2.name.baseName() != "_index.d"){
+                if (d2.isFile && d2.name.extension == ".d" && d2.name.baseName() != "_index.d" && d2.name.baseName() != "package.d"){
                     auto modName = toModuleName(args[1], d2.name);
                     auto enumName = toEnumName(modName);
                     pkgFile.writeln("        "~enumName~" = \""~modName~"\",");

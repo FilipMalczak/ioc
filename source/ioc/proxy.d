@@ -1,13 +1,10 @@
-﻿module ioc.proxy;
+module ioc.proxy;
 
 import ioc.meta;
+import ioc.logging;
+import ioc.stdmeta;
 
-import std.meta;
-import std.traits;
 import std.stdio;
-import std.typecons;
-
-const bool logGeneratedCode = false;
 
 template Proxy(Original){
     string methodsString(){
@@ -26,9 +23,9 @@ template Proxy(Original){
 
         version(unittest){
             static if (logGeneratedCode) {
-                pragma(msg, "- Proxy ----------------------------");
-                pragma(msg, methodsString());
-                pragma(msg, "====================================");
+                mixin debugLog!("- Proxy ----------------------------");
+                mixin debugLog!(methodsString());
+                mixin debugLog!("====================================");
             }
         }
         mixin(methodsString());

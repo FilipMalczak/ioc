@@ -4,3 +4,5 @@ import toppkg.a: MyStereotype;
 
 @MyStereotype
 enum Y;
+
+class DeeplyNestedClass {}

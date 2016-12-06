@@ -1,10 +1,15 @@
-﻿module ioc.testing;
+module ioc.testing;
 
 version(unittest){
     import std.conv;
     import std.algorithm.searching;
-    
-    import ioc.stereotypes;
+
+    public import std.conv: to;
+    public import std.stdio: writeln;
+    public import std.algorithm.searching: canFind;
+
+
+    import ioc.stdmeta;
     
     struct GenericLogEntries(E) {
         static E[] entries = [];
@@ -49,9 +54,20 @@ version(unittest){
     }
     
     alias LogEntries = GenericLogEntries!string;
+
+    template inSeq(string val, seq...){
+        static if (seq.length == 0)
+            alias inSeq = Alias!false;
+        else
+            static if (seq[0] == val)
+                alias inSeq = Alias!true;
+            else
+                alias inSeq = inSeq!(val, seq[1..$]);
+    }
+
     
-    enum SimpleAnnotation;
+/*    enum SimpleAnnotation;
     
     @Stereotype
-    enum SimpleStereotype;
+    enum SimpleStereotype;*/
 }

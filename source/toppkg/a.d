@@ -1,8 +1,8 @@
 module toppkg.a;
 
-import ioc.stereotypes;
+//import ioc.stereotypes;
 
-@Stereotype
+//@Stereotype
 struct MyStereotype{};
 
 @MyStereotype

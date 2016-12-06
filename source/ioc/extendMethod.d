@@ -1,13 +1,9 @@
-﻿module ioc.extendMethod;
-import std.traits;
-import std.meta;
-import std.typecons;
-
+module ioc.extendMethod;
 //todo: rewrite to use ioc.meta.Function and friends
 
 import ioc.meta;
-
-const logGeneratedCode = false;
+import ioc.logging;
+import ioc.stdmeta;
 
 template chooseOverload(overloads, T...){
     static assert (overloads.length > 0);
@@ -185,11 +181,11 @@ template ExtendMethod(Impl, TheInterceptor) {
 
     version(unittest) {
         static if (logGeneratedCode) {
-            pragma(msg, "- ExtendMethod ---------------------");
-            pragma(msg, "Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
-            pragma(msg, "Result class name: ", className());
-            pragma(msg, overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
-            pragma(msg, "= ExtendMethod =====================");
+            mixin debugLog!("- ExtendMethod ---------------------");
+            mixin debugLog!("Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
+            mixin debugLog!("Result class name: ", className());
+            mixin debugLog!(overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
+            mixin debugLog!("= ExtendMethod =====================");
         }
     }
 
