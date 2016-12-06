@@ -1,5 +1,4 @@
 module toppkg.sub;
 
-class ClassInSubPkg {};
-
+class ClassInSubPkg {}
 

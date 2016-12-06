@@ -57,15 +57,45 @@ version(unittest){
 
     template inSeq(string val, seq...){
         static if (seq.length == 0)
-            alias inSeq = Alias!false;
+            alias inSeq = False;
         else
             static if (seq[0] == val)
-                alias inSeq = Alias!true;
+                alias inSeq = True;
             else
                 alias inSeq = inSeq!(val, seq[1..$]);
     }
 
-    
+    template seq(T...){
+        struct seqImpl {
+            alias sequence = T;
+        }
+        alias seq = seqImpl;
+    }
+
+    mixin template assertSequencesSetEqual(alias expected, alias result){
+        pragma(msg, "assertSequencesSetEqual(expected: [", expected.sequence, "], result: [", result.sequence, "])");
+        static assert (expected.sequence.length == result.sequence.length);
+        mixin template iter(int i){
+            static if (i<expected.sequence.length){
+                alias name = Alias!(expected.sequence[i]);
+                static assert (inSeq!(name, result.sequence));
+                mixin iter!(i+1);
+            }
+        }
+        mixin iter!0;
+    }
+
+    alias True = Alias!true;
+    alias False = Alias!false;
+
+
+    template Bool(T...) if (T.length == 1) {
+        static if (T[0])
+            alias Bool = True;
+        else
+            alias Bool = False;
+    }
+
 /*    enum SimpleAnnotation;
     
     @Stereotype

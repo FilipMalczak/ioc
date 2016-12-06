@@ -21,20 +21,15 @@ template collect(T...){
  * apply(string moduleName, accumulated...) -> newAccumulated...
  */
 template foldModuleNames(string pkgName, alias apply, initVal...){
-    pragma(msg, "foldModuleNames(", pkgName, ", ...)");
     alias submodules = EnumMembers!(getPackageIndex!(pkgName).submodules);
     alias subpackages = EnumMembers!(getPackageIndex!(pkgName).subpackages);
-    pragma(msg, "submodules ", submodules);
-    pragma(msg, "subpackages", subpackages);
     template iterateOverSubmodules(int i, acc...){
-        pragma(msg, "foldModuleNames(", pkgName, ", ...) => iterateOverSubmodules(", i, ", ", acc, ")");
         static if (i<submodules.length){
             alias iterateOverSubmodules = iterateOverSubmodules!(i+1, apply!(submodules[i], acc));
         } else
             alias iterateOverSubmodules = acc;
     }
     template iterateOverSubpackages(int i, acc...){
-        pragma(msg, "foldModuleNames(", pkgName, ", ...) => iterateOverSubpackages(", i, ", ", acc, ")");
         static if (i<subpackages.length){
             alias iterateOverSubpackages = iterateOverSubpackages!(i+1, foldModuleNames!(subpackages[i], apply, acc));
         } else
@@ -48,13 +43,14 @@ template moduleNames(string pkgName){
 }
 
 unittest {
-    alias collected = moduleNames!("toppkg");
-    alias expected = aliasSeqOf!(["toppkg.b", "toppkg.a", "toppkg.sub.y", "toppkg.subpkg.x"]);
-    //alias expected = aliasSeqOf!(["toppkg.b", "toppkg.a", "toppkg", "toppkg.sub.y", "toppkg.sub", "toppkg.subpkg.x"]);
-    static assert (expected.length == collected.length);
-    foreach (name; expected) {
-        static assert (inSeq!(name, collected));
-    }
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.b", "toppkg.a", "toppkg.sub.y", "toppkg.subpkg.x"
+        ),
+        seq!(
+            moduleNames!("toppkg")
+        )
+    );
 }
 
 /**
@@ -65,15 +61,11 @@ unittest {
  */
 template foldAllMembers(string pkgName, alias qualifier, alias apply, initVal...){
     template implApplyForModuleName(string modName, acc...){
-        pragma(msg, "implApply...("~modName~", ...)");
         alias imported = aModule!(modName);
         alias members = aliasSeqOf!([__traits(allMembers, imported)]);
-        pragma(msg, "members: ", members);
         template iter(int i, iterAcc...){
             static if (i<members.length){
-                pragma(msg, "member: ", members[i]);
                 alias qualifies = qualifier!(__traits(getMember, imported, members[i]));
-                pragma(msg, "qualifies ", qualifies);
                 static if (qualifies)
                     alias iter = iter!(i+1, apply!(modName, __traits(getMember, imported, members[i]), iterAcc));
                 else
@@ -114,15 +106,104 @@ version(unittest){
  * shows:
  *     tuple("object")
  * This behaviour is weird, but it works for non-package modules, so for now lets
- * just say that there is not package module support (even though it was supported
+ * just say that there is no package module support (even though it was supported
  * in generated package index; it is now disabled).
  */
 
 unittest {
-    alias collected = foldAllMembers!("toppkg", isClass, collectNames, AliasSeq!());
-    alias expected = aliasSeqOf!(["toppkg.b.BC", "toppkg.sub.y.DeeplyNestedClass"]);
-    static assert (expected.length == collected.length);
-    foreach (name; expected) {
-        static assert (inSeq!(name, collected));
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.b.BC", "toppkg.sub.y.DeeplyNestedClass"
+        ),
+        seq!(
+            foldAllMembers!("toppkg", isClass, collectNames, AliasSeq!())
+        )
+    );
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.sub.y.Y"
+        ),
+        seq!(
+            foldAllMembers!("toppkg", isEnum, collectNames, AliasSeq!())
+        )
+    );
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.b.C", "toppkg.b.B", "toppkg.a.A", "toppkg.a.MyStereotype"
+        ),
+        seq!(
+            foldAllMembers!("toppkg", isStruct, collectNames, AliasSeq!())
+        )
+    );
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.subpkg.x.AnInterface"
+        ),
+        seq!(
+            foldAllMembers!("toppkg", isInterface, collectNames, AliasSeq!())
+        )
+    );
+}
+
+template or(templates...) {
+    template impl(T...) if (T.length == 1) {
+        template iter(int i){
+            static if (i < templates.length) {
+                alias temp = templates[i];
+                static if (temp!(T[0]))
+                    alias iter = True;
+                else
+                    alias iter = iter!(i+1);
+            } else {
+                alias iter = False;
+            }
+        }
+        alias impl = iter!0;
     }
+    alias or = impl;
+}
+
+template and(templates...){
+    template impl(T...) if (T.length == 1) {
+        template iter(int i){
+            static if (i < templates.length) {
+                alias temp = templates[i];
+                static if (!temp!(T[0]))
+                    alias iter = False;
+                else
+                    alias iter = iter!(i+1);
+            } else {
+                alias iter = True;
+            }
+        }
+        alias impl = iter!0;
+    }
+    alias and = impl;
+}
+
+version(unittest) {
+    template nameStartsWithB(T...) if (T.length == 1){
+        alias name = fullyQualifiedName!(T[0]);
+        alias nameStartsWithB = Bool!(name.length > 0 && (name.split(".")[$-1]).toLower().startsWith("b"));
+    }
+}
+
+unittest {
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.b.BC", "toppkg.subpkg.x.AnInterface", "toppkg.sub.y.DeeplyNestedClass"
+        ),
+        seq!(
+            foldAllMembers!("toppkg", or!(isClass, isInterface), collectNames, AliasSeq!())
+        )
+    );
+
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.b.BC"
+        ),
+        seq!(
+            foldAllMembers!("toppkg", and!(isClass, nameStartsWithB), collectNames, AliasSeq!())
+        )
+    );
 }

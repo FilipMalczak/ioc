@@ -1,3 +1,3 @@
 module toppkg;
 
-class ClassInToppkg {};
+class ClassInToppkg {}
