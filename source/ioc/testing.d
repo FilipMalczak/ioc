@@ -8,8 +8,8 @@ version(unittest){
     public import std.stdio: writeln;
     public import std.algorithm.searching: canFind;
 
-
     import ioc.stdmeta;
+    import ioc.logging;
     
     struct GenericLogEntries(E) {
         static E[] entries = [];
@@ -73,7 +73,6 @@ version(unittest){
     }
 
     mixin template assertSequencesSetEqual(alias expected, alias result){
-        pragma(msg, "assertSequencesSetEqual(expected: [", expected.sequence, "], result: [", result.sequence, "])");
         static assert (expected.sequence.length == result.sequence.length);
         mixin template iter(int i){
             static if (i<expected.sequence.length){

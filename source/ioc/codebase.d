@@ -207,3 +207,99 @@ unittest {
         )
     );
 }
+
+enum Stereotype;
+
+enum isStereotype(Annotation) = is(Annotation == Stereotype) || hasUDA!(Annotation, Stereotype);
+
+version(unittest){
+    import std.stdio;
+
+    @Stereotype
+    enum Ann;
+
+    enum NotAnn;
+
+    @Stereotype
+    enum AnnWithFields {
+        A, B
+    }
+
+    enum NotAnnWithFields {
+        A, B
+    }
+
+    @Stereotype
+    struct AnnStr{}
+
+    @AnnStr
+    struct NotAnnStr{}
+
+    @Stereotype
+    struct AnnStrWithParams{
+        string a;
+        int b;
+    }
+
+    struct NotAnnStrWithParams{
+        string a;
+        int b;
+    }
+
+    //todo: test templates, e.g. struct A(B, string c){}
+}
+
+unittest{
+    static assert (isStereotype!Ann);
+    static assert (!isStereotype!NotAnn);
+    static assert (isStereotype!AnnWithFields);
+    static assert (!isStereotype!NotAnnWithFields);
+    static assert (isStereotype!AnnStr);
+    static assert (!isStereotype!NotAnnStr);
+    static assert (isStereotype!AnnStrWithParams);
+    static assert (!isStereotype!NotAnnStrWithParams);
+}
+
+template hasStereotype(Stereotypes...) if (Stereotypes.length > 0) {
+    template impl(T...) if (T.length == 1) {
+        template iter(int i){
+            static if (i < Stereotypes.length){
+                static if ( hasUDA!(T[0], Stereotypes[i]) )
+                    alias iter = True;
+                else
+                    alias iter = iter!(i+1);
+            } else {
+                alias iter = False;
+            }
+        }
+        alias impl = iter!(0);
+    }
+    alias hasStereotype = impl;
+}
+
+version(unittest){
+    @Ann
+    class ClassWithAnn {}
+
+    @Stereotype @Ann
+    class ClassWithStereotypeAndAnn {}
+
+    @Stereotype @NotAnn
+    class ClassWithStereotypeAndNotAnn {}
+}
+
+unittest {
+    alias has_Stereotype = hasStereotype!(Stereotype);
+    static assert(has_Stereotype!(Ann));
+    static assert(!has_Stereotype!(NotAnn));
+    alias has_Ann = hasStereotype!(Ann);
+    static assert(has_Ann!(ClassWithStereotypeAndAnn));
+    static assert(!has_Ann!(ClassWithStereotypeAndNotAnn));
+    alias has_Stereotype_or_Ann = hasStereotype!(Stereotype, Ann);
+    static assert(has_Stereotype_or_Ann!(Ann));
+    static assert(has_Stereotype_or_Ann!(ClassWithAnn));
+    static assert(has_Stereotype_or_Ann!(ClassWithStereotypeAndAnn));
+    static assert(has_Stereotype_or_Ann!(ClassWithStereotypeAndNotAnn));
+
+    //todo: way, way more cases here
+}
