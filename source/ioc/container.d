@@ -1,6 +1,8 @@
 module ioc.container;
 
 import ioc.stdmeta;
+import ioc.meta;
+import ioc.testing;
 
 import poodinis;
 
@@ -52,80 +54,41 @@ class WritelnMsgLayer: Layer {
     }
 }
 
-struct Resolver(LayerClasses...){
-    string[][string] requirements; // X is required by Y => X in requirements[Y]
-    string[][string] reverseRequirements; // X is required by Y => Y in reverseRequirements[X]
+template inSeq(val, seq...){
+    static if (seq.length == 0)
+        alias inSeq = False;
+    else
+        static if (is(seq[0] == val))
+            alias inSeq = True;
+        else
+            alias inSeq = inSeq!(val, seq[1..$]);
+}
 
-    //todo: extract, make generic
-    static string[][string] deepcopy(string[][string] original){
-        string[][string] result;
-        foreach (k, v; original){
-            result[k] = []~v; //todo: there is nicer way to do this
+template resolveOrder(Layers...){
+    template resolve(Layer, AlreadyResolved...){
+        alias requirements = Layer.requiredLayers;
+        template iterRequired(int i, Acc...){
+            static if (i<requirements.length){
+                static if (inSeq!(requirements[i], Acc))
+                    alias iterRequired = iterRequired!(i+1, Acc);
+                else
+                    alias iterRequired = iterRequired!(i+1, resolve!(requirements[i], Acc));
+            } else {
+                static if (inSeq!(Layer, Acc))
+                    alias iterRequired = Acc;
+                else
+                    alias iterRequired = AliasSeq!(Acc, Layer);
+            }
         }
-        return result;
+        alias resolve = iterRequired!(0, AlreadyResolved);
     }
-
-    template typeidsTemp(int i, LayerClass){
-        static if (i<LayerClass.requiredLayers.length){
-            alias typeidsTemp = AliasSeq!(fullyQualifiedName!(LayerClass.requiredLayers[i]), typeidsTemp!(i+1, LayerClass));
+    template iterLayers(int i, Acc...){
+        static if (i<Layers.length){
+            alias iterLayers = iterLayers!(i+1, resolve!(Layers[i], Acc));
         } else
-            alias typeidsTemp = AliasSeq!();
+            alias iterLayers = Acc;
     }
-
-    string[] requiredTypeids(LayerClass)(){
-        return [typeidsTemp!(0, LayerClass)];
-    }
-
-    void iterLayerClasses(int i=0)(){
-        static if (i<LayerClasses.length){
-            requirements[fullyQualifiedName!(LayerClasses[i])] = requiredTypeids!(LayerClasses[i])();
-            iterLayerClasses!(i+1)();
-        }
-    }
-
-    void fillRequiredBy(){
-        iterLayerClasses!(0)();
-    }
-    
-    //fixme: do I even need reverseIndex?
-    void reverseIndex(){
-        foreach (depending, required; requirements){
-            foreach (req; required){
-                if (req !in reverseRequirements)
-                    reverseRequirements[req] = [];
-                if (!reverseRequirements[req].canFind(depending))
-                    reverseRequirements[req] ~= depending;
-            }
-        }
-    }
-    
-    string[] resolve(string requirement, string[] a = []){
-        string[] acc = [] ~ a;
-        //writeln("resolve ", requirement, " ; ", acc);
-        foreach (dependency; requirements[requirement])
-            if (!acc.canFind(dependency)) {
-                acc = resolve(dependency, acc);
-                //writeln("acc => ", acc);
-            }
-        if (!acc.canFind(requirement))
-            acc ~= requirement;
-        //writeln("return ", acc);
-        return acc;
-    }
-    
-    string[] findOrder(){
-        //writeln("findOrder");
-        string[] result = [];
-        //auto req = deepcopy(requirements);
-        //auto revReq = deepcopy(reverseRequirements);
-        foreach (requirement; requirements.keys){
-            //writeln("req ", requirement, ", result before ", result);
-            result = resolve(requirement, result);
-            //writeln("req ", requirement, ", result after ", result);
-        }
-        //writeln("return ", result);
-        return result;
-    }
+    alias resolveOrder = iterLayers!(0, AliasSeq!());
 }
 
 version(unittest){
@@ -144,33 +107,70 @@ version(unittest){
     mixin(classString("I", ["G", "E"]));
     mixin(classString("J", ["I"]));
     mixin(classString("K", ["H", "J"]));
+
+    mixin(classString("JJ", []));
+    mixin(classString("AA", ["JJ"]));
+    mixin(classString("CC", ["AA"]));
+    mixin(classString("DD", ["CC"]));
+    mixin(classString("HH", []));
+    mixin(classString("BB", ["AA", "HH"]));
+    mixin(classString("EE", ["DD", "BB"]));
+    mixin(classString("FF", ["EE"]));
+    mixin(classString("II", ["BB"]));
+    mixin(classString("KK", ["CC", "DD"]));
+    mixin(classString("LL", ["KK"]));
+    mixin(classString("MM", ["FF", "LL"]));
+    mixin(classString("GG", ["FF", "MM"]));
+
+    mixin template assertOrderedAccordingToRequirements(T...){
+        mixin template iter(int i){
+            static if (i<T.length){
+                alias current = T[i];
+                mixin template iterReq(int j){
+                    static if (j<current.requiredLayers.length){
+                        alias idxInResult = staticIndexOf!(current.requiredLayers[j], T);
+                        static assert (idxInResult >= 0);
+                        static assert (idxInResult < i);
+                        mixin iterReq!(j+1);
+                    }
+                }
+                mixin iterReq!0;
+                mixin iter!(i+1);
+            }
+        }
+        mixin iter!0;
+    }
 }
 
 unittest {
-    auto r = Resolver!(A, B, C, D, E, F, G, H, I, J, K)();
-    r.fillRequiredBy();
-    //todo: this will need porting
-    assert(r.requirements == [
-        "ioc.container.A":[], 
-        "ioc.container.B":["ioc.container.A"],
-        "ioc.container.C":["ioc.container.A"], 
-        "ioc.container.D":["ioc.container.B", "ioc.container.C"], 
-        "ioc.container.E":["ioc.container.D"], 
-        "ioc.container.F":[], 
-        "ioc.container.G":[], 
-        "ioc.container.H":["ioc.container.G"], 
-        "ioc.container.I":["ioc.container.G", "ioc.container.E"], 
-        "ioc.container.J":["ioc.container.I"], 
-        "ioc.container.K":["ioc.container.H", "ioc.container.J"]
-    ]);
-    r.reverseIndex();
-    //writeln(r.reverseRequirements);//todo: make assert out of this
-    writeln(r.findOrder());//todo: make assert out of this
-    //r.findOrder();
+    alias input1 = AliasSeq!(A, B, C, D, E, F, G, H, I, J, K);
+    alias result1 = resolveOrder!(input1);
+    pragma(msg, "result1 ", result1);
+    mixin assertSequencesSetEqual!(seq!(input1), seq!result1);
+    mixin assertOrderedAccordingToRequirements!(result1);
+
+    alias input2 = AliasSeq!(K, J, I, H, G, F, E, D, C, B, A);
+    alias result2 = resolveOrder!(input2);
+    pragma(msg, "result2 ", result2);
+    mixin assertSequencesSetEqual!(seq!(input2), seq!result2);
+    mixin assertOrderedAccordingToRequirements!(result2);
+
+    alias input3 = AliasSeq!(AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM);
+    alias result3 = resolveOrder!(input3);
+    pragma(msg, "result3 ", result3);
+    mixin assertSequencesSetEqual!(seq!(input3), seq!result3);
+    mixin assertOrderedAccordingToRequirements!(result3);
+
+    alias input4 = AliasSeq!(CC, DD, II, JJ, FF, KK, LL, GG, EE, AA, BB, MM, HH);
+    alias result4 = resolveOrder!(input3);
+    pragma(msg, "result4 ", result4);
+    mixin assertSequencesSetEqual!(seq!(input4), seq!result4);
+    mixin assertOrderedAccordingToRequirements!(result4);
 }
 
 //todo: constraints on class template args
 class Container(LayerClasses...) {
+    alias LayerOrder = resolveOrder!LayerClasses;
     Layer[] layers;
     
     this(){
@@ -179,8 +179,8 @@ class Container(LayerClasses...) {
     }
     
     private void loadLayersIter(int i)(){
-        static if (i<LayerClasses.length){
-            mixin("this.layers ~= new "~fullyQualifiedName!(LayerClasses[i])~"();");
+        static if (i<LayerOrder.length){
+            mixin("this.layers ~= new "~fullyQualifiedName!(LayerOrder[i])~"();");
             //todo: add initialization
             loadLayersIter!(i+1)();
         }

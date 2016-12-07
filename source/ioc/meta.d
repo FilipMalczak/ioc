@@ -7,6 +7,16 @@ import std.conv;
 import std.traits;
 import std.typecons;
 
+alias True = Alias!true;
+alias False = Alias!false;
+
+template Bool(T...) if (T.length == 1) {
+        static if (T[0])
+            alias Bool = True;
+        else
+            alias Bool = False;
+    }
+
 template allInterfaces(Original){
     static if (is(Original == interface))
         alias allInterfaces = AliasSeq!(Original, InterfacesTuple!Original);

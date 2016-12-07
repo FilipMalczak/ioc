@@ -55,6 +55,7 @@ version(unittest){
     
     alias LogEntries = GenericLogEntries!string;
 
+    //fixme: has similiar version in container
     template inSeq(string val, seq...){
         static if (seq.length == 0)
             alias inSeq = False;
