@@ -11,11 +11,11 @@ alias True = Alias!true;
 alias False = Alias!false;
 
 template Bool(T...) if (T.length == 1) {
-        static if (T[0])
-            alias Bool = True;
-        else
-            alias Bool = False;
-    }
+    static if (T[0])
+        alias Bool = True;
+    else
+        alias Bool = False;
+}
 
 template allInterfaces(Original){
     static if (is(Original == interface))

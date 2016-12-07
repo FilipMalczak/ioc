@@ -9,6 +9,7 @@ version(unittest){
     public import std.algorithm.searching: canFind;
 
     import ioc.stdmeta;
+    import ioc.meta;
     import ioc.logging;
     
     struct GenericLogEntries(E) {
@@ -85,16 +86,7 @@ version(unittest){
         mixin iter!0;
     }
 
-    alias True = Alias!true;
-    alias False = Alias!false;
 
-
-    template Bool(T...) if (T.length == 1) {
-        static if (T[0])
-            alias Bool = True;
-        else
-            alias Bool = False;
-    }
 
 /*    enum SimpleAnnotation;
     
