@@ -161,7 +161,7 @@ template ExtendMethod(Impl, TheInterceptor) {
     }
     
     string overloadedMethodText(string interceptorInstanceName, string resultName, string throwableName){
-        return methodDeclaration()~"{ "~
+        return "override "~methodDeclaration()~"{ "~
             declareThrowable(throwableName)~
                 declareResult(resultName)~
                 scopes(interceptorInstanceName, throwableName)~
