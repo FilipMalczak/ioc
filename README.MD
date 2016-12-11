@@ -65,7 +65,7 @@ There are already several predefined qualifiers and higher order templates:
         }
         alias and = impl;
     }```
- * `isType(T...) working as alternative of isClass, isInterface, isStruct, isEnum`
+ * `isType(T...)` working as alternative of `isClass`, `isInterface`, `isStruct`, `isEnum`
  * `template isStereotype(Annotation...) if (Annotation.length == 1)` recognising
     stereotype UDA types. Stereotype is any type that is annotated with `@Stereotype`
     or `enum Stereotype` itself. It's used by:
@@ -169,6 +169,55 @@ Aspects. You'll read about it in chapter about IoC container
 
 _(surprise)_
 
-> WIP
+I've once read that inversion of control can be boiled down to a set of 4 
+techniques or ideas:
+ * dependency injection,
+ * aspects,
+ * events,
+ * framework.
 
+# Dependency Injection
 
+I'm using existing DI framework: [poodinis](https://github.com/mbierlee/poodinis).
+
+But, there is a `synchronized class IocContainer(packageNames...) if (stringsOnly!(packageNames) && packageNames.length > 0)`
+in package ioc.container. It provides simple DI methods (`register` and `resolve`)
+and renames poodinis' real overload of `register` to `bind`. Besides, by default
+it returns `null` instead of throwing resolving exception. `resolveAll` method was
+dropped to be replaced with autobinding.
+
+The real added value here is autoregistration. Packages given as template arguments
+of the container class are scanned in search for `@Component` stereotype. Every `class` with
+such annotation is registered and every `interface` is subject to autobinding.
+
+> At the nearest future things will change a bit: classes won't be registered with
+> themselves, but rather with some generated subclass than weaves in aspects. 
+
+Autobinding is process in which set of all component `class`es are searched for
+one that implements that `interface`. If there is exactly one such `class`, then that
+`interface` and this `class` are bound with bind method. 
+
+> Aspects will change that too, but not much.
+
+## Todo
+
+ * incorporate some ORM and provide support for repository interfaces 
+ * extend that idea to full MVC
+
+# Aspects
+
+Just taking a break to write some docs and I'll be going back to implementing this.
+
+I'll be inspiring myself with Spring AOP a lot. In that spirit I'm gonna use
+ioc.compose module together with ioc.container to weave in aspects declared
+with proper annotations across whole codebase matching some join points.
+
+# Events
+
+One of next steps - probably gonna incorporate some existing event loop library,
+but I wanna build some support for asynchronous services.
+
+# Framework
+
+I've got a slowly growing idea for entry point method parametrized with
+struct defining modes and commands of your program. Far away in the future anyway.
