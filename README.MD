@@ -138,18 +138,16 @@ supported in indexing and won't be creating any members in `enum submodules`.
 
 ### ioc.extendMethod
 
-ioc.extendMethod defines Interceptor template interface and ExtendMethod template.
+ioc.extendMethod defines `interface Interceptor` and `template ExtendMethod`.
 
-Interceptor is customized with interface from amongst which methods one will be intercepted,
+`Interceptor` is customized with `interface` from amongst which methods one will be intercepted,
 name of that method and optional list of parameter types - needed only when there
 is more than one overload for the method.
 
-ExtendMethod template takes a concrete type and Interceptor implementation and
+`ExtendMethod` template takes a concrete type and `Interceptor` implementation and
 creates type that extends the concrete type but has a method intercepted.
 
-See unittests for examples of usage and expected behaviour.
-
-There is also InterceptorAdapter which provides empty interceptor for any
+There is also `InterceptorAdapter` which provides empty interceptor for any
 method - useful when we only want to intercept single crossing point.
 
 ### ioc.proxy
