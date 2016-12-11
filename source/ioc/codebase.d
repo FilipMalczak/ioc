@@ -251,10 +251,10 @@ unittest {
 enum Stereotype;
 
 template isStereotype(Annotation...) if (Annotation.length == 1) {
-    static if (is(Annotation[0] == Stereotype) || hasUDA!(Annotation[0], Stereotype))
-    alias isStereotype = True;
-        else
-    alias isStereotype = False;
+    static if (isType!Annotation && (is(Annotation[0] == Stereotype) || hasUDA!(Annotation[0], Stereotype)))
+        alias isStereotype = True;
+    else
+        alias isStereotype = False;
 }
 
 version(unittest){

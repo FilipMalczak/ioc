@@ -24,6 +24,7 @@ template getTarget(Inter, string fooName, T...){
 
 interface Interceptor(Inter, string fooName, T...) if (is(Inter == interface)) {
     alias target = getTarget!(Inter, fooName, T);
+    alias repr = Alias!(func!(target)());
     //alias params = Parameters!(__traits(getMember, Inter, fooName));
     //alias returned = ReturnType!(__traits(getMember, Inter, fooName));
     alias params = Parameters!target;
@@ -69,8 +70,17 @@ class InterceptorAdapter(Inter, string fooName): Interceptor!(Inter, fooName){
 template ExtendMethod(Impl, TheInterceptor) {
     //template ExtendMethod(Impl, TheInterceptor, string foo, theInterface) {
     //template ExtendMethod(Impl: theInterface, TheInterceptor: Interceptor!(theInterface, foo), string foo, theInterface) {
+    
+    string overrideIfNeeded(){
+        static if (__traits(isVirtualMethod, TheInterceptor.target))
+            return "override ";
+        else
+            return "";
+    }
+    
     string methodDeclaration(){
-        static if (is(TheInterceptor.returned == void)) {
+        return func!(TheInterceptor.target).forImplementation;
+        /*static if (is(TheInterceptor.returned == void)) {
             static if (TheInterceptor.params.length == 0) {
                 return "void "~TheInterceptor.interceptedMethod~"()";
             } else {
@@ -82,14 +92,15 @@ template ExtendMethod(Impl, TheInterceptor) {
             } else {
                 return fullyQualifiedName!(TheInterceptor.returned)~" "~TheInterceptor.interceptedMethod~"(T...)(T t)";
             }
-        }
+        }*/
     }
     
     string callBefore(string interceptorInstanceName){
         static if (TheInterceptor.params.length == 0) {
             return interceptorInstanceName~".before();";
         } else {
-            return interceptorInstanceName~".before(tuple(t).expand);";
+            return interceptorInstanceName~".before("~func!(TheInterceptor.target).parameters.forInvoking~");";
+//            return interceptorInstanceName~".before("~func!(TheInterceptor.target).parameters.forInvoking~");";
         }
     }
     
@@ -98,13 +109,14 @@ template ExtendMethod(Impl, TheInterceptor) {
             static if (TheInterceptor.params.length == 0) {
                 return interceptorInstanceName~"."~"after();";
             } else {
-                return interceptorInstanceName~"."~"after(tuple(t).expand);";
+                return interceptorInstanceName~"."~"after("~func!(TheInterceptor.target).parameters.forInvoking~");";
+//                return interceptorInstanceName~"."~"after("~func!(TheInterceptor.target).parameters.forInvoking~");";
             }
         } else {
             static if (TheInterceptor.params.length == 0) {
                 return interceptorInstanceName~"."~"after("~resultName~");";
             } else {
-                return interceptorInstanceName~"."~"after(tuple(t).expand, "~resultName~");";
+                return interceptorInstanceName~"."~"after("~func!(TheInterceptor.target).parameters.forInvoking~", "~resultName~");";
             }
         }
     }
@@ -114,13 +126,13 @@ template ExtendMethod(Impl, TheInterceptor) {
             static if (TheInterceptor.params.length == 0) {
                 return "super."~TheInterceptor.interceptedMethod~"();";
             } else {
-                return "super."~TheInterceptor.interceptedMethod~"(tuple(t).expand);";
+                return "super."~TheInterceptor.interceptedMethod~"("~func!(TheInterceptor.target).parameters.forInvoking~");";
             }
         } else {
             static if (TheInterceptor.params.length == 0) {
                 return resultName~" = super."~TheInterceptor.interceptedMethod~"();";
             } else {
-                return resultName~" = super."~TheInterceptor.interceptedMethod~"(tuple(t).expand);";
+                return resultName~" = super."~TheInterceptor.interceptedMethod~"("~func!(TheInterceptor.target).parameters.forInvoking~");";
             }
         }
     }
@@ -143,9 +155,9 @@ template ExtendMethod(Impl, TheInterceptor) {
                 "scope(success) "~interceptorInstanceName~".scopeSuccess(); "~
                     "scope(failure) "~interceptorInstanceName~".scopeFailure("~throwableName~");";
         } else {
-            return "scope(exit) "~interceptorInstanceName~".scopeExit(tuple(t).expand, "~throwableName~");"~
-                "scope(success) "~interceptorInstanceName~".scopeSuccess(tuple(t).expand); "~
-                    "scope(failure) "~interceptorInstanceName~".scopeFailure(tuple(t).expand, "~throwableName~");";
+            return "scope(exit) "~interceptorInstanceName~".scopeExit("~func!(TheInterceptor.target).parameters.forInvoking~", "~throwableName~");"~
+                "scope(success) "~interceptorInstanceName~".scopeSuccess("~func!(TheInterceptor.target).parameters.forInvoking~"); "~
+                    "scope(failure) "~interceptorInstanceName~".scopeFailure("~func!(TheInterceptor.target).parameters.forInvoking~", "~throwableName~");";
         }
     }
     
@@ -154,14 +166,13 @@ template ExtendMethod(Impl, TheInterceptor) {
             invocation~
                 "} catch (Throwable t) { "~
                 throwableName~" = t; ";
-        //static if (!is(TheInterceptor.returned == void))
-            result ~= "return "~interceptorInstanceName~".hijackException(t);";
+        result ~= func!(TheInterceptor.target).returnIfNeeded~interceptorInstanceName~".hijackException(t);";
         result ~= "}";
         return result;
     }
     
     string overloadedMethodText(string interceptorInstanceName, string resultName, string throwableName){
-        return "override "~methodDeclaration()~"{ "~
+        return overrideIfNeeded()~methodDeclaration()~"{ "~
             declareThrowable(throwableName)~
                 declareResult(resultName)~
                 scopes(interceptorInstanceName, throwableName)~
@@ -181,11 +192,11 @@ template ExtendMethod(Impl, TheInterceptor) {
 
     version(unittest) {
         static if (logGeneratedCode) {
-            mixin debugLog!("- ExtendMethod ---------------------");
-            mixin debugLog!("Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
-            mixin debugLog!("Result class name: ", className());
-            mixin debugLog!(overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
-            mixin debugLog!("= ExtendMethod =====================");
+            pragma(msg, "- ExtendMethod ---------------------");
+            pragma(msg, "Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
+            pragma(msg, "Result class name: ", className());
+            pragma(msg, overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
+            pragma(msg, "= ExtendMethod =====================");
         }
     }
 

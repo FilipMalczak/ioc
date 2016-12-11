@@ -23,9 +23,9 @@ template Proxy(Original){
 
         version(unittest){
             static if (logGeneratedCode) {
-                mixin debugLog!("- Proxy ----------------------------");
-                mixin debugLog!(methodsString());
-                mixin debugLog!("====================================");
+                pragma(msg, "- Proxy ----------------------------");
+                pragma(msg, methodsString());
+                pragma(msg, "====================================");
             }
         }
         mixin(methodsString());

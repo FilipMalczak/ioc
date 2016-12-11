@@ -118,7 +118,7 @@ struct Function {
     @property string returnIfNeeded(){
         if (returnType == "void")
             return "";
-        return "return";
+        return "return ";
     }
 }
 
