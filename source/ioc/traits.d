@@ -1,4 +1,4 @@
-module ioc.traits;
+deprecated module ioc.traits;
 
 import std.typecons;
 import std.meta;

@@ -8,7 +8,6 @@ import ioc.codebase;
 
 import poodinis;
 
-import std.stdio;
 import std.string;
 import std.algorithm;
 
@@ -67,10 +66,4 @@ synchronized class IocContainer(packageNames...) if (stringsOnly!(packageNames) 
     T resolve(T)(){
         return poodinisContainer.resolve!(T)();
     }
-}
-
-unittest {
-    import poodinisTest.a;
-    auto c = new shared IocContainer!("toppkg", "poodinisTest")();
-    writeln(c.resolve!I());
 }

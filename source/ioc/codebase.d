@@ -1,11 +1,7 @@
 module ioc.codebase;
 
-import ioc.testing;
-import ioc.logging;
 import ioc.stdmeta;
 import ioc.meta;
-
-import std.string;
 
 //todo: those beg to be moved to some other module. but where to?
 
@@ -42,17 +38,6 @@ template moduleNames(string pkgName){
     alias moduleNames = foldModuleNames!(pkgName, collect, AliasSeq!());
 }
 
-unittest {
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.b", "toppkg.a", "toppkg.sub.y", "toppkg.subpkg.x"
-        ),
-        seq!(
-            moduleNames!("toppkg")
-        )
-    );
-}
-
 template Importable(string modName, string memName){
     alias moduleName = modName;
     alias memberName = memName;
@@ -69,7 +54,6 @@ template Importable(string modName, string memName){
         alias qualifies = qualifier!(imported!());
     }
 }
-
 
 /**
  * apply(alias importable, accumulated...) -> newAccumulated...
@@ -136,41 +120,6 @@ template isEnum(T...) if (T.length == 1){ alias isEnum = Alias!(is(T[0] == enum)
  * in generated package index; it is now disabled).
  */
 
-unittest {
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.b.BC", "toppkg.sub.y.DeeplyNestedClass"
-        ),
-        seq!(
-            memberNames!("toppkg", isClass)
-        )
-    );
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.sub.y.Y"
-        ),
-        seq!(
-            memberNames!("toppkg", isEnum)
-        )
-    );
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.b.C", "toppkg.b.B", "toppkg.a.A", "toppkg.a.MyStereotype"
-        ),
-        seq!(
-            memberNames!("toppkg", isStruct)
-        )
-    );
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.subpkg.x.AnInterface"
-        ),
-        seq!(
-            memberNames!("toppkg", isInterface)
-        )
-    );
-}
-
 template or(templates...) {
     template impl(T...) if (T.length == 1) {
         template iter(int i){
@@ -212,33 +161,6 @@ template isType(T...) {
     alias isType = alternative!T;
 }
 
-version(unittest) {
-    template nameStartsWithB(T...) if (T.length == 1){
-        alias name = fullyQualifiedName!(T[0]);
-        alias nameStartsWithB = Bool!(name.length > 0 && (name.split(".")[$-1]).toLower().startsWith("b"));
-    }
-}
-
-unittest {
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.b.BC", "toppkg.subpkg.x.AnInterface", "toppkg.sub.y.DeeplyNestedClass"
-        ),
-        seq!(
-            memberNames!("toppkg", or!(isClass, isInterface))
-        )
-    );
-
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.b.BC"
-        ),
-        seq!(
-            memberNames!("toppkg", and!(isClass, nameStartsWithB))
-        )
-    );
-}
-
 enum Stereotype;
 
 template isStereotype(Annotation...) if (Annotation.length == 1) {
@@ -246,54 +168,6 @@ template isStereotype(Annotation...) if (Annotation.length == 1) {
         alias isStereotype = True;
     else
         alias isStereotype = False;
-}
-
-version(unittest){
-    import std.stdio;
-
-    @Stereotype
-    enum Ann;
-
-    enum NotAnn;
-
-    @Stereotype
-    enum AnnWithFields {
-        A, B
-    }
-
-    enum NotAnnWithFields {
-        A, B
-    }
-
-    @Stereotype
-    struct AnnStr{}
-
-    @AnnStr
-    struct NotAnnStr{}
-
-    @Stereotype
-    struct AnnStrWithParams{
-        string a;
-        int b;
-    }
-
-    struct NotAnnStrWithParams{
-        string a;
-        int b;
-    }
-
-    //todo: test templates, e.g. struct A(B, string c){}
-}
-
-unittest{
-    static assert (isStereotype!Ann);
-    static assert (!isStereotype!NotAnn);
-    static assert (isStereotype!AnnWithFields);
-    static assert (!isStereotype!NotAnnWithFields);
-    static assert (isStereotype!AnnStr);
-    static assert (!isStereotype!NotAnnStr);
-    static assert (isStereotype!AnnStrWithParams);
-    static assert (!isStereotype!NotAnnStrWithParams);
 }
 
 template hasStereotype(Stereotypes...) if (Stereotypes.length > 0) {
@@ -313,33 +187,6 @@ template hasStereotype(Stereotypes...) if (Stereotypes.length > 0) {
     alias hasStereotype = impl;
 }
 
-version(unittest){
-    @Ann
-    class ClassWithAnn {}
-
-    @Stereotype @Ann
-    class ClassWithStereotypeAndAnn {}
-
-    @Stereotype @NotAnn
-    class ClassWithStereotypeAndNotAnn {}
-}
-
-unittest {
-    alias has_Stereotype = hasStereotype!(Stereotype);
-    static assert(has_Stereotype!(Ann));
-    static assert(!has_Stereotype!(NotAnn));
-    alias has_Ann = hasStereotype!(Ann);
-    static assert(has_Ann!(ClassWithStereotypeAndAnn));
-    static assert(!has_Ann!(ClassWithStereotypeAndNotAnn));
-    alias has_Stereotype_or_Ann = hasStereotype!(Stereotype, Ann);
-    static assert(has_Stereotype_or_Ann!(Ann));
-    static assert(has_Stereotype_or_Ann!(ClassWithAnn));
-    static assert(has_Stereotype_or_Ann!(ClassWithStereotypeAndAnn));
-    static assert(has_Stereotype_or_Ann!(ClassWithStereotypeAndNotAnn));
-
-    //todo: way, way more cases here
-}
-
 template stringsOnly(A...){
     static if (A.length == 0)
         alias stringsOnly = True;
@@ -348,18 +195,6 @@ template stringsOnly(A...){
             alias stringsOnly = stringsOnly!(A[1..$]);
         else
             alias stringsOnly = False;
-}
-
-unittest {
-    static assert (stringsOnly!());
-    static assert (stringsOnly!("a"));
-    static assert (stringsOnly!("a", "b", "c"));
-    static assert (!stringsOnly!(ClassWithAnn));
-    static assert (!stringsOnly!(ClassWithAnn, "b", "c"));
-    static assert (!stringsOnly!("a", ClassWithStereotypeAndAnn, "c"));
-    static assert (!stringsOnly!("a", "b", ClassWithStereotypeAndNotAnn));
-    static assert (!stringsOnly!(ClassWithAnn, "b", ClassWithStereotypeAndNotAnn));
-    static assert (!stringsOnly!(ClassWithAnn, ClassWithStereotypeAndAnn, ClassWithStereotypeAndNotAnn));
 }
 
 template foldAllMembers(alias qualifier, alias apply, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames)) {
@@ -383,15 +218,4 @@ template memberAliases(alias qualifier, pkgNames...) if (pkgNames.length > 0 && 
 
 template importables(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames)) {
     alias importables = foldAllMembers!(qualifier, collect, pkgNames);
-}
-
-unittest {
-    mixin assertSequencesSetEqual!(
-        seq!(
-            "toppkg.subpkg.x.AnInterface", "poodinisTest.a.I"
-        ),
-        seq!(
-            memberNames!(isInterface, "poodinisTest", "toppkg")
-        )
-    );
 }

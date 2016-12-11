@@ -7,5 +7,19 @@
     "dflags": ["-d"],
     "dependencies": {
         "poodinis": "~>7.0.1"
-    }
+    },
+    "configurations": [
+        {
+            "name": "run",
+            "targetType": "executable"
+        },
+        {
+            "name": "unittest",
+            "targetType": "executable",
+            "sourcePaths": [
+                "test"
+            ],
+            "preGenerateCommands": ["rdmd generate_index.d test"]
+        }
+    ]
 }

@@ -25,61 +25,47 @@ void main(string[] args){
             auto pkgFilePath = chainPath(d.name, "_index.d");
             auto pkgFile = File(pkgFilePath,"w");
             pkgFile.writeln("module "~toModuleName(args[1], d.name)~"._index;");
-//            pkgFile.writeln("import std.range;");
             pkgFile.writeln();
             pkgFile.writeln("struct Index {");
             pkgFile.writeln("    enum packageName = \""~toModuleName(args[1], d.name)~"\";");
-            //pkgFile.writeln("    static immutable string packageName = \""~toModuleName(args[1], d.name)~"\";");
             pkgFile.writeln();
-            pkgFile.writeln("    enum submodules {");
-            //pkgFile.writeln("    enum submodules = [");
-            //pkgFile.writeln("    static pure nothrow immutable string[] submodules = [");
+            pkgFile.write("    enum submodules");
+            string[] fileLines = [];
             foreach(DirEntry d2; dirEntries(d.name, SpanMode.shallow)){
                 if (d2.isFile && d2.name.extension == ".d" && d2.name.baseName() != "_index.d" && d2.name.baseName() != "package.d"){
                     auto modName = toModuleName(args[1], d2.name);
                     auto enumName = toEnumName(modName);
-                    pkgFile.writeln("        "~enumName~" = \""~modName~"\",");
+                    fileLines ~= "        "~enumName~" = \""~modName~"\",";
                 }
             }
-            pkgFile.writeln("    }");
-            //pkgFile.writeln("    ];");
-            pkgFile.writeln();
-            string[] subpkgs = [];
-            pkgFile.write("    enum subpackages");
-            //pkgFile.writeln("    enum subpackages = [");
-            //pkgFile.writeln("    static pure nothrow immutable string[] subpackages = [");
-            bool anyFound = false;
-            foreach(DirEntry d2; dirEntries(d.name, SpanMode.shallow)){
-                if (d2.isDir){
-                    if (!anyFound)
-                        pkgFile.writeln(" {");
-                    anyFound = true;
-                    auto modName = toModuleName(args[1], d2.name);
-                    subpkgs ~= modName;
-                    auto enumName = toEnumName(modName);
-                    pkgFile.writeln("        "~enumName~" = \""~modName~"\",");
-                }
-            }
-            if (anyFound)
+            if (fileLines.length) {
+                pkgFile.writeln(" {");
+                foreach (line; fileLines)
+                    pkgFile.writeln(line);
                 pkgFile.writeln("    }");
+            }
             else
                 pkgFile.writeln("    ;");
-            //pkgFile.writeln("    ];");
+            pkgFile.writeln();
+            pkgFile.write("    enum subpackages");
+            string[] subdirLines = [];
+            foreach(DirEntry d2; dirEntries(d.name, SpanMode.shallow)){
+                if (d2.isDir){
+                    auto modName = toModuleName(args[1], d2.name);
+                    auto enumName = toEnumName(modName);
+                    subdirLines ~= "        "~enumName~" = \""~modName~"\",";
+                }
+            }
+            if (subdirLines.length) {
+                pkgFile.writeln(" {");
+                foreach (line; subdirLines)
+                    pkgFile.writeln(line);
+                pkgFile.writeln("    }");
+            }
+            else
+                pkgFile.writeln("    ;");
             pkgFile.writeln();
 
-            /*
-            pkgFile.writeln("    static @property pure nothrow immutable(string[]) moduleTree() {");
-            string[] toBeChained = [ "submodules" ];
-            foreach (i, p; subpkgs) {
-                auto name = "Index_"~to!string(i);
-                pkgFile.writeln("        import "~p~"._index: "~name~" = Index;");
-                toBeChained ~= name~".moduleTree";
-            }
-            pkgFile.writeln();
-            pkgFile.write("        return ");
-            pkgFile.write(toBeChained.join(" ~ "));
-            pkgFile.writeln(";");
-            pkgFile.writeln("    }");*/
             pkgFile.writeln("}");
         }
 }
