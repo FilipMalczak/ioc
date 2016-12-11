@@ -53,11 +53,28 @@ unittest {
     );
 }
 
+template Importable(string modName, string memName){
+    alias moduleName = modName;
+    alias memberName = memName;
+    
+    alias fullName = Alias!(moduleName~"."~memberName);
+    
+    template imported(){
+        //todo: clean up importing utilities, this is 4th implementation of the same use case; see ioc.meta
+        mixin("import "~moduleName~";");
+        mixin("alias imported = "~memberName~";");
+    }
+    
+    template qualifies(alias qualifier){
+        alias qualifies = qualifier!(imported!());
+    }
+}
+
+
 /**
- * apply(string moduleName, <X>, accumulated...) -> newAccumulated...
- * where <X> is anything that can be returned by
- *   __traits(getMember, aliasedModule, __traits(allMembers, aliasedModule)[i])
- * where i varies for every fold.
+ * apply(alias importable, accumulated...) -> newAccumulated...
+ * where importable is alias to Importable with adequate module and member names
+ * as template params.
  */
 template foldAllMembers(string pkgName, alias qualifier, alias apply, initVal...){
     template implApplyForModuleName(string modName, acc...){
@@ -65,9 +82,9 @@ template foldAllMembers(string pkgName, alias qualifier, alias apply, initVal...
         alias members = aliasSeqOf!([__traits(allMembers, imported)]);
         template iter(int i, iterAcc...){
             static if (i<members.length){
-                alias qualifies = qualifier!(__traits(getMember, imported, members[i]));
-                static if (qualifies)
-                    alias iter = iter!(i+1, apply!(modName, __traits(getMember, imported, members[i]), iterAcc));
+                alias importable = Importable!(modName, members[i]);
+                static if (importable.qualifies!(qualifier))
+                    alias iter = iter!(i+1, apply!(importable, iterAcc));
                 else
                     alias iter = iter!(i+1, iterAcc);
             } else
@@ -75,7 +92,27 @@ template foldAllMembers(string pkgName, alias qualifier, alias apply, initVal...
         }
         alias implApplyForModuleName = iter!(0, acc);
     }
-    alias foldAllMembers = foldModuleNames!(pkgName, implApplyForModuleName);
+    alias foldAllMembers = foldModuleNames!(pkgName, implApplyForModuleName, initVal);
+}
+
+template collectMemberNamesApply(alias importable, acc...){
+    alias collectMemberNamesApply = AliasSeq!(importable.fullName, acc);
+}
+
+template collectMemberAliasesApply(alias importable, acc...){
+    alias collectMemberAliasesApply = AliasSeq!(importable.imported!(), acc);
+}
+
+template memberNames(string pkgName, alias qualifier, initVal...){
+    alias memberNames = foldAllMembers!(pkgName, qualifier, collectMemberNamesApply, initVal);
+}
+
+template memberAliases(string pkgName, alias qualifier, initVal...){
+    alias memberAliases = foldAllMembers!(pkgName, qualifier, collectMemberAliasesApply, initVal);
+}
+
+template importables(string pkgName, alias qualifier, initVal...){
+    alias importables = foldAllMembers!(pkgName, qualifier, collect, initVal);
 }
 
 template isClass(T...) if (T.length == 1){ alias isClass = Alias!(is(T[0] == class)); }
@@ -89,9 +126,7 @@ version(unittest){
         alias tester = acc;
     }
 
-    template collectNames(string modName, clazz, acc...){
-        alias collectNames = AliasSeq!(fullyQualifiedName!clazz, acc);
-    }
+    
 }
 
 /*
@@ -116,7 +151,7 @@ unittest {
             "toppkg.b.BC", "toppkg.sub.y.DeeplyNestedClass"
         ),
         seq!(
-            foldAllMembers!("toppkg", isClass, collectNames, AliasSeq!())
+            memberNames!("toppkg", isClass)
         )
     );
     mixin assertSequencesSetEqual!(
@@ -124,7 +159,7 @@ unittest {
             "toppkg.sub.y.Y"
         ),
         seq!(
-            foldAllMembers!("toppkg", isEnum, collectNames, AliasSeq!())
+            memberNames!("toppkg", isEnum)
         )
     );
     mixin assertSequencesSetEqual!(
@@ -132,7 +167,7 @@ unittest {
             "toppkg.b.C", "toppkg.b.B", "toppkg.a.A", "toppkg.a.MyStereotype"
         ),
         seq!(
-            foldAllMembers!("toppkg", isStruct, collectNames, AliasSeq!())
+            memberNames!("toppkg", isStruct)
         )
     );
     mixin assertSequencesSetEqual!(
@@ -140,7 +175,7 @@ unittest {
             "toppkg.subpkg.x.AnInterface"
         ),
         seq!(
-            foldAllMembers!("toppkg", isInterface, collectNames, AliasSeq!())
+            memberNames!("toppkg", isInterface)
         )
     );
 }
@@ -181,6 +216,11 @@ template and(templates...){
     alias and = impl;
 }
 
+template isType(T...) {
+    alias alternative = or!(isClass, isInterface, isStruct, isEnum);
+    alias isType = alternative!T;
+}
+
 version(unittest) {
     template nameStartsWithB(T...) if (T.length == 1){
         alias name = fullyQualifiedName!(T[0]);
@@ -194,7 +234,7 @@ unittest {
             "toppkg.b.BC", "toppkg.subpkg.x.AnInterface", "toppkg.sub.y.DeeplyNestedClass"
         ),
         seq!(
-            foldAllMembers!("toppkg", or!(isClass, isInterface), collectNames, AliasSeq!())
+            memberNames!("toppkg", or!(isClass, isInterface))
         )
     );
 
@@ -203,14 +243,19 @@ unittest {
             "toppkg.b.BC"
         ),
         seq!(
-            foldAllMembers!("toppkg", and!(isClass, nameStartsWithB), collectNames, AliasSeq!())
+            memberNames!("toppkg", and!(isClass, nameStartsWithB))
         )
     );
 }
 
 enum Stereotype;
 
-enum isStereotype(Annotation) = is(Annotation == Stereotype) || hasUDA!(Annotation, Stereotype);
+template isStereotype(Annotation...) if (Annotation.length == 1) {
+    static if (is(Annotation[0] == Stereotype) || hasUDA!(Annotation[0], Stereotype))
+    alias isStereotype = True;
+        else
+    alias isStereotype = False;
+}
 
 version(unittest){
     import std.stdio;
@@ -302,4 +347,60 @@ unittest {
     static assert(has_Stereotype_or_Ann!(ClassWithStereotypeAndNotAnn));
 
     //todo: way, way more cases here
+}
+
+template stringsOnly(A...){
+    static if (A.length == 0)
+        alias stringsOnly = True;
+    else
+        static if (is(typeof(A[0]) == string))
+            alias stringsOnly = stringsOnly!(A[1..$]);
+        else
+            alias stringsOnly = False;
+}
+
+unittest {
+    static assert (stringsOnly!());
+    static assert (stringsOnly!("a"));
+    static assert (stringsOnly!("a", "b", "c"));
+    static assert (!stringsOnly!(ClassWithAnn));
+    static assert (!stringsOnly!(ClassWithAnn, "b", "c"));
+    static assert (!stringsOnly!("a", ClassWithStereotypeAndAnn, "c"));
+    static assert (!stringsOnly!("a", "b", ClassWithStereotypeAndNotAnn));
+    static assert (!stringsOnly!(ClassWithAnn, "b", ClassWithStereotypeAndNotAnn));
+    static assert (!stringsOnly!(ClassWithAnn, ClassWithStereotypeAndAnn, ClassWithStereotypeAndNotAnn));
+}
+
+template foldAllMembers(alias qualifier, alias apply, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames)) {
+    template iter(int i){
+        static if (i < pkgNames.length){
+            alias iter = foldAllMembers!(pkgNames[i], qualifier, apply, iter!(i+1));
+        } else {
+            alias iter = AliasSeq!();
+        }
+    }
+    alias foldAllMembers = iter!(0);
+}
+
+template memberNames(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames)) {
+    alias memberNames = foldAllMembers!(qualifier, collectMemberNamesApply, pkgNames);
+}
+
+template memberAliases(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames)) {
+    alias memberAliases = foldAllMembers!(qualifier, collectMemberAliasesApply, pkgNames);
+}
+
+template importables(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames)) {
+    alias importables = foldAllMembers!(qualifier, collect, pkgNames);
+}
+
+unittest {
+    mixin assertSequencesSetEqual!(
+        seq!(
+            "toppkg.subpkg.x.AnInterface", "poodinisTest.a.I"
+        ),
+        seq!(
+            memberNames!(isInterface, "poodinisTest", "toppkg")
+        )
+    );
 }

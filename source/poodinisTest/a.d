@@ -1,8 +1,10 @@
 module poodinisTest.a;
 
-//import ioc.poodinis.registering;
-
-//@Component
-interface I {
-    void foo();
+version(unittest) {
+    import ioc.container;
+    
+    @Component
+    interface I {
+        void foo();
+    }
 }
