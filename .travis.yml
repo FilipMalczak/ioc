@@ -1,6 +1,4 @@
 language: d
 d:
-  - dmd
-  - gdc
-  - ldc
+  - dmd # gdc and ldc support currently disabled, since they have no rdmd
 script: dub test
