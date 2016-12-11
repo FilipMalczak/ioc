@@ -120,15 +120,6 @@ template isInterface(T...) if (T.length == 1){ alias isInterface = Alias!(is(T[0
 template isStruct(T...) if (T.length == 1){ alias isStruct = Alias!(is(T[0] == struct)); }
 template isEnum(T...) if (T.length == 1){ alias isEnum = Alias!(is(T[0] == enum)); }
 
-version(unittest){
-    template tester(string modName, clazz...){
-        pragma(msg, modName, " ", fullyQualifiedName!clazz[0]);
-        alias tester = acc;
-    }
-
-    
-}
-
 /*
  * FIXME: for some reason package modules return empty tuple when treated with allMembers trait:
  *     import toppkg.sub;

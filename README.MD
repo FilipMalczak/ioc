@@ -3,16 +3,93 @@ Slow approach to Inversion of Control in D2 language
 
 # Features
 
+Basically all of the features are covered with tests - some do lack those, but
+mostly for edge cases. Anyway, to see how to use something you basically always
+have an example in the form of test for random, "normal" scenario.
+
+You are also very welcome to read the code, it may clarify a lot.
+
+I've tried to descirbe preconditions as well as I could, but if you fail them,
+error will not be helpful, sometimes you may get a linkage error, sometimes 
+a compilation error, and as often - runtime errors. This will need a lot of work,
+but first I wanna handle happy scenarios.
+
 ## Package scan
 
 Add execution of `generate_index.d` with `rdmd` to your DUB file's 
 `preGenerateCommands` to trigger building an index of modules. It works by adding
 `_index` module to each package, that will contain metadata for package traversal.
 
+I'd propose adding `**/_index.d` rule to `.gitignore`. This project is configured
+for this lib to work. Unfortunately, you have to download the script yourself
+and add proper rule to `preGenerateCommands`. At some point I will probably 
+prepare a shell script for automatic download. It's not much work, but I need to
+focus on main functional areas now. Feel free to contribute.
+
 ### ioc.codebase
 
-See unittest of `ioc.codebase` for example usage. That module is written based on
-template folding (as in functional programming, sometimes called reduce). It 
+This module provides low-level iteration tools:
+ * `template foldModuleNames(string pkgName, alias apply, initVal...)` where  
+    `apply` is a eponymous template with parameters `(string moduleName, accumulated...)`
+    "returning" `newAccumulated...` being new accumulated value. Template evaluates
+    to result of applying over each module name in given package.
+ * `template foldAllMembers(string pkgName, alias qualifier, alias apply, initVal...)`
+    and its multi-package version, but without initial value: 
+    `template foldAllMembers(alias qualifier, alias apply, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames))`
+    
+    In both cases `qualifier` is template with parameters `(T...)`, eponymous with
+    `alias` to a boolean, stating whether a symbol qualifies to applying, while
+    `template apply(alias importable, accumulated...) -> newAccumulated...`
+    where `importable` is alias to `struct Importable` with adequate module and 
+    member names as template params. Templates "return" result of applying to
+    each symbol that qualifies.
+
+Neither of those templates defines any particular order of traversing module
+tree. There is only a guarantee that every entry (module name or importable) in
+the hierarchy will be visited and applied to exactly once (if wanted).
+
+There are already several predefined qualifiers and higher order templates:
+ * `template isClass(T...) if (T.length == 1)`
+ * `template isInterface(T...) if (T.length == 1)`
+ * `template isStruct(T...) if (T.length == 1)`
+ * `template isEnum(T...) if (T.length == 1)`
+ * ```template or(templates...) {
+        template impl(T...) if (T.length == 1) {
+            (...)
+        }
+        alias or = impl;
+    }```
+ * ```template and(templates...){
+        template impl(T...) if (T.length == 1) {
+            (...)
+        }
+        alias and = impl;
+    }```
+ * `isType(T...) working as alternative of isClass, isInterface, isStruct, isEnum`
+ * `template isStereotype(Annotation...) if (Annotation.length == 1)` recognising
+    stereotype UDA types. Stereotype is any type that is annotated with `@Stereotype`
+    or `enum Stereotype` itself. It's used by:
+ * ```template hasStereotype(Stereotypes...) if (Stereotypes.length > 0) {
+        template impl(T...) if (T.length == 1) {
+            (...)
+        }
+        alias hasStereotype = impl;
+    }```
+
+Hopefully, they are pretty straight-forward.
+
+Last, but not least (and most probably most useful of all other contents of 
+this module), there are predefined collecting templates, returning AliasSeq of
+either fully qualified names, aliases of, or Importables of each member that qualify:
+
+ * `template memberNames(string pkgName, alias qualifier, initVal...)`
+ * `template memberNames(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames))`
+ * `template memberAliases(string pkgName, alias qualifier, initVal...)`
+ * `template memberAliases(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames))`
+ * `template importables(string pkgName, alias qualifier, initVal...)`
+ * `template importables(alias qualifier, pkgNames...) if (pkgNames.length > 0 && stringsOnly!(pkgNames))`
+
+You can use them to iterate over symbols manually.
 
 ### Low-level `_index.d` API
 
@@ -57,13 +134,6 @@ supported in indexing and won't be creating any members in `enum submodules`.
 > etc) only classes and interfaces, but there is also support for enums and structs
 > besides them, when it comes to UDAs used as annotations.
 
-
-I'd propose adding `**/_index.d` rule to `.gitignore`. This project is configured
-for this lib to work. Unfortunately, you have to download the script yourself
-and add proper rule to `preGenerateCommands`. At some point I will probably 
-prepare a shell script for automatic download. It's not much work, but I need to
-focus on main functional areas now. Feel free to contribute.
-
 ## Interceptors and other low-level type behaviour modifications
 
 ### ioc.extendMethod
@@ -90,5 +160,15 @@ forward all the public API to wrapped instance.
 ### ioc.compose
 
 Used to compose several interceptors with single template.
+
+### Coming soon
+
+Aspects. You'll read about it in chapter about IoC container
+
+# IoC Container
+
+_(surprise)_
+
+> WIP
 
 
