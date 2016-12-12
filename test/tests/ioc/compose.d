@@ -6,7 +6,7 @@ import ioc.extendMethod;
 import tests.ioc.extendMethod;
 import ioc.testing;
 import std.conv;
-/*
+
 interface TestInterface{
     void foo(int);
     string bar(float f);
@@ -104,4 +104,4 @@ unittest{
     LogEntries.reset();
 
     //todo: full test suite for composition, scopes, hijacking, etc
-}*/
+}

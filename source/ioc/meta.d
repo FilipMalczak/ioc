@@ -70,6 +70,13 @@ struct FunctionParameter {
     @property string forInvoking(){
         return name;
     }
+    
+    @property string forImportingContext(){
+        auto parts = type.split(".");
+        while (parts.length < 3)
+            parts = [""] ~ parts;
+        return parts[$-2];
+    }
 }
 
 struct FunctionParameters {
@@ -95,6 +102,13 @@ struct FunctionParameters {
             parts ~= param.forInvoking;
         return parts.join(", ");
     }
+    
+    @property string forImportingContext(){
+        string[] parts = [];
+        foreach (param; parameters)
+            parts ~= param.forImportingContext;
+        return parts.join(" ");
+    }
 }
 
 struct Function {
@@ -113,6 +127,14 @@ struct Function {
 
     @property string forInvoking(){
         return name~"("~parameters.forInvoking~")";
+    }
+    
+    string forImportingContext(){
+        string result = "";
+        if (FunctionParameter(returnType, "").forImportingContext)
+            result = FunctionParameter(returnType, "").forImportingContext;
+        result ~= " "~parameters.forImportingContext;
+        return result;
     }
 
     @property string returnIfNeeded(){

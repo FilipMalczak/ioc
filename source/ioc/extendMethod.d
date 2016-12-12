@@ -62,7 +62,9 @@ class InterceptorAdapter(Inter, string fooName): Interceptor!(Inter, fooName){
     override returned hijackException(Throwable t) { throw t; }
 }
 
-template ExtendMethod(Impl, TheInterceptor) {
+template ExtendMethod(alias Impl, alias TheInterceptor) {
+    mixin("import "~moduleName!TheInterceptor~";");
+
     string overrideIfNeeded(){
         static if (__traits(isVirtualMethod, TheInterceptor.target))
             return "override ";
@@ -72,6 +74,10 @@ template ExtendMethod(Impl, TheInterceptor) {
     
     string methodDeclaration(){
         return func!(TheInterceptor.target).forImplementation;
+    }
+    
+    string doTheImports(){
+        return func!(TheInterceptor.target).forImportingContext;
     }
     
     string callBefore(string interceptorInstanceName){
@@ -150,6 +156,7 @@ template ExtendMethod(Impl, TheInterceptor) {
     
     string overloadedMethodText(string interceptorInstanceName, string resultName, string throwableName){
         return overrideIfNeeded()~methodDeclaration()~"{ "~
+            doTheImports()~
             declareThrowable(throwableName)~
                 declareResult(resultName)~
                 scopes(interceptorInstanceName, throwableName)~
@@ -172,6 +179,9 @@ template ExtendMethod(Impl, TheInterceptor) {
             pragma(msg, "- ExtendMethod ---------------------");
             pragma(msg, "Impl: ", Impl, " TheInterceptor: ", TheInterceptor);
             pragma(msg, "Result class name: ", className());
+            pragma(msg, "Imports:");
+            pragma(msg, doTheImports);
+            pragma(msg, "/Imports");
             pragma(msg, overloadedMethodText("_interceptorInstance", "_result", "_throwable"));
             pragma(msg, "= ExtendMethod =====================");
         }

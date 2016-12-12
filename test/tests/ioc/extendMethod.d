@@ -8,120 +8,121 @@ import ioc.stdmeta;
 
 import ioc.testing;
 import std.conv;
-   /* 
-interface TestInterface {
-    void foo();
-    
-    int bar(float x);
-    
-    void baz();
-    int baz2(int x);
-}
+version (unittest) {
+    interface TestInterface {
+        void foo();
+        
+        int bar(float x);
+        
+        void baz();
+        int baz2(int x);
+    }
 
-class TestImplementation: TestInterface {
-    override void foo(){
-        LogEntries.add("foo()");
+    class TestImplementation: TestInterface {
+        override void foo(){
+            LogEntries.add("foo()");
+        }
+        
+        override int bar(float x){
+            LogEntries.add("bar(", x, ")");
+            return to!int(x);
+        }
+        
+        override void baz(){
+            LogEntries.add("baz()");
+            throw new Exception("ABC");
+        }
+        
+        override int baz2(int x){
+            LogEntries.add("baz2(", x, ")");
+            throw new Exception("ABC "~to!string(x));
+        }
     }
-    
-    override int bar(float x){
-        LogEntries.add("bar(", x, ")");
-        return to!int(x);
-    }
-    
-    override void baz(){
-        LogEntries.add("baz()");
-        throw new Exception("ABC");
-    }
-    
-    override int baz2(int x){
-        LogEntries.add("baz2(", x, ")");
-        throw new Exception("ABC "~to!string(x));
-    }
-}
 
-class BeforeAfterVoid: InterceptorAdapter!(TestInterface, "foo") {
-    override void before(){
-        LogEntries.add("foo BEFORE");
+    class BeforeAfterVoid: InterceptorAdapter!(TestInterface, "foo") {
+        override void before(){
+            LogEntries.add("foo BEFORE");
+        }
+        override void after(){
+            LogEntries.add("foo AFTER");
+        }
     }
-    override void after(){
-        LogEntries.add("foo AFTER");
-    }
-}
 
-class BeforeAfterReturned: InterceptorAdapter!(TestInterface, "bar") {
-    override void before(float x){
-        LogEntries.add("bar BEFORE ", x);
+    class BeforeAfterReturned: InterceptorAdapter!(TestInterface, "bar") {
+        override void before(float x){
+            LogEntries.add("bar BEFORE ", x);
+        }
+        override int after(float x, int r){
+            LogEntries.add("bar AFTER ", x, " ", r);
+            return r+1;
+        }
     }
-    override int after(float x, int r){
-        LogEntries.add("bar AFTER ", x, " ", r);
-        return r+1;
-    }
-}
 
-class ScopeSuccessNoParams: InterceptorAdapter!(TestInterface, "foo") {
-    override void scopeSuccess(){
-        LogEntries.add("Success");
+    class ScopeSuccessNoParams: InterceptorAdapter!(TestInterface, "foo") {
+        override void scopeSuccess(){
+            LogEntries.add("Success");
+        }
     }
-}
 
-class ScopeExitNoParams: InterceptorAdapter!(TestInterface, "foo") {
-    override void scopeExit(Throwable t){
-        LogEntries.add("Exit ", t);
+    class ScopeExitNoParams: InterceptorAdapter!(TestInterface, "foo") {
+        override void scopeExit(Throwable t){
+            LogEntries.add("Exit ", t);
+        }
     }
-}
 
-class ScopeFailureNoParams: InterceptorAdapter!(TestInterface, "baz") {
-    override void scopeFailure(Throwable t){
-        LogEntries.add("Fail ", t.msg);
+    class ScopeFailureNoParams: InterceptorAdapter!(TestInterface, "baz") {
+        override void scopeFailure(Throwable t){
+            LogEntries.add("Fail ", t.msg);
+        }
     }
-}
 
-class ScopeSuccessParams: InterceptorAdapter!(TestInterface, "bar") {
-    override void scopeSuccess(float x){
-        LogEntries.add("Success ", x);
+    class ScopeSuccessParams: InterceptorAdapter!(TestInterface, "bar") {
+        override void scopeSuccess(float x){
+            LogEntries.add("Success ", x);
+        }
     }
-}
 
-class ScopeExitParams: InterceptorAdapter!(TestInterface, "bar") {
-    override void scopeExit(float x, Throwable t){
-        LogEntries.add("Exit ", x, " ", t);
+    class ScopeExitParams: InterceptorAdapter!(TestInterface, "bar") {
+        override void scopeExit(float x, Throwable t){
+            LogEntries.add("Exit ", x, " ", t);
+        }
     }
-}
 
-class ScopeFailureParams: InterceptorAdapter!(TestInterface, "baz2") {
-    override void scopeFailure(int z, Throwable t){
-        LogEntries.add("Fail ", z, " ", t.msg);
+    class ScopeFailureParams: InterceptorAdapter!(TestInterface, "baz2") {
+        override void scopeFailure(int z, Throwable t){
+            LogEntries.add("Fail ", z, " ", t.msg);
+        }
     }
-}
 
-class ExceptionHijackVoid: InterceptorAdapter!(TestInterface, "baz"){
-    override void hijackException(Throwable t) { 
-        LogEntries.add("hijacked void");
+    class ExceptionHijackVoid: InterceptorAdapter!(TestInterface, "baz"){
+        override void hijackException(Throwable t) { 
+            LogEntries.add("hijacked void");
+        }
     }
-}
 
-class ExceptionHijackNonVoid: InterceptorAdapter!(TestInterface, "baz2"){
-    override int hijackException(Throwable t) { 
-        LogEntries.add("hijacked ", t.msg);
-        return 8;
+    class ExceptionHijackNonVoid: InterceptorAdapter!(TestInterface, "baz2"){
+        override int hijackException(Throwable t) { 
+            LogEntries.add("hijacked ", t.msg);
+            return 8;
+        }
     }
-}
 
-class FirstInterceptor: InterceptorAdapter!(TestInterface, "foo"){
-    override void before(){
-        LogEntries.add("foo FIRST BEFORE");
+    class FirstInterceptor: InterceptorAdapter!(TestInterface, "foo"){
+        override void before(){
+            LogEntries.add("foo FIRST BEFORE");
+        }
+        override void after(){
+            LogEntries.add("foo FIRST AFTER");
+        }
     }
-    override void after(){
-        LogEntries.add("foo FIRST AFTER");
-    }
-}
 
-class SecondInterceptor: InterceptorAdapter!(TestInterface, "foo"){
-    override void before(){
-        LogEntries.add("foo SECOND BEFORE");
-    }
-    override void after(){
-        LogEntries.add("foo SECOND AFTER");
+    class SecondInterceptor: InterceptorAdapter!(TestInterface, "foo"){
+        override void before(){
+            LogEntries.add("foo SECOND BEFORE");
+        }
+        override void after(){
+            LogEntries.add("foo SECOND AFTER");
+        }
     }
 }
 
@@ -205,4 +206,4 @@ unittest {
     hijackingTest();
     compositionTest();
     
-}*/
+}
