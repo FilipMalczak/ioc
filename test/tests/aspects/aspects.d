@@ -47,14 +47,14 @@ class A {
 }
 
 @Aspect
-@Pointcut!(name!("a.b.C"), method!("foo"))
+@Pointcut!(name!("poodinisTest.b.AComponent"), method!("foo"))
 @After
 class B {
     @Advice
     void advice(){}
 
     @Advice
-    @Pointcut!(name!"a.**")
+    @Pointcut!(name!"**.b.*")
     void advice2(){}
 
 }

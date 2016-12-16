@@ -249,3 +249,44 @@ struct seq(T...){
 
     template reversed() { alias reversed = seq!(reverse!(T)); }
 }
+
+
+template derivedOverloads(alias Class){
+    alias memberNames = seq!(__traits(derivedMembers, Class));
+    template iter(int i=0, acc...){
+        static if (i<memberNames.length){
+            alias iter = iter!(i+1, __traits(getOverloads, Class, memberNames._[i]), acc);
+        } else
+            alias iter = acc;
+    }
+    alias derivedOverloads = iter!();
+}
+
+template allOverloads(alias Class){
+    alias memberNames = seq!(__traits(allMembers, Class));
+    template iter(int i=0, acc...){
+        static if (i<memberNames.length){
+            alias iter = iter!(i+1, __traits(getOverloads, Class, memberNames._[i]), acc);
+        } else
+            alias iter = acc;
+    }
+    alias derivedOverloads = iter!();
+}
+
+template derivedOverloads(T...){ //todo: if all are classes/interfaces
+    static if (T.length == 0)
+        alias derivedOverloads = AliasSeq!();
+    else
+        alias derivedOverloads = AliasSeq!(derivedOverloads!(T[0]), derivedOverloads!(T[1..$]));
+}
+
+template allOverloads(T...){ //todo: if all are classes/interfaces
+    static if (T.length == 0)
+        alias allOverloads = AliasSeq!();
+    else
+        alias allOverloads = AliasSeq!(allOverloads!(T[0]), allOverloads!(T[1..$]));
+}
+
+template interfaceOverloads(Class){
+    alias interfaceOverloads = derivedOverloads!(InterfacesTuple!Class);
+}

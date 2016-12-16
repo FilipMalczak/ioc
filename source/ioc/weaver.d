@@ -33,10 +33,72 @@ alias After = Advice!AFTER;
 
 template Pointcut(T...){
     alias matchers = T;
+
+    template matches(Target, string foo, Args...){
+        template iter(int i=0){
+            static if (i<matchers.length){
+                alias matcher = matchers[i];
+                pragma(msg, "matcher: ", matcher.stringof);
+                static if (matcher.matches!(Target, foo, Args)) {
+                    pragma(msg, "we need to go deeper");
+                    alias iter = iter!(i+1);
+                } else {
+                    pragma(msg, "well, fuck");
+                    alias iter = False;
+                }
+            } else {
+                pragma(msg, "EMPTY");
+                alias iter = True;
+            }
+        }
+        alias matches = iter!();
+    }
 };
 
-template name(string s){};
-template method(string s){};
+template name(string s){
+    //todo: rename to matchClassName
+    bool match(string rule, string target){
+        return match(rule.split("."), target.split("."));
+    }
+
+    //todo: rename to matchClassName
+    bool match(string[] ruleParts, string[] targetParts){
+        //writeln("match ", ruleParts, " ; ", targetParts);
+        if (ruleParts.length * targetParts.length == 0) {
+            //writeln("len * len == 0 : ", ruleParts, " ; ", targetParts);
+            //writeln("out ", ruleParts == targetParts);
+            return ruleParts == targetParts;
+        }
+        if (ruleParts[0] == "**") {
+            //writeln("**");
+            auto restOfRule = ruleParts[1..$];
+            foreach (i; 0..targetParts.length+1) {
+                //writeln("i ",i);
+                if (match (restOfRule, targetParts[i..$])) {
+                    //writeln("i -> true");
+                    return true;
+                }
+            }
+            return false;
+        } else if (ruleParts[0] == "*")
+            return match(ruleParts[1..$], targetParts[1..$]);
+        return ruleParts[0] == targetParts[0] && match(ruleParts[1..$], targetParts[1..$]);
+    }
+
+    template matches(Target, string foo, Args...){
+        alias matches = Alias!(match(s, fullyQualifiedName!Target));
+    }
+};
+template method(string s, T...){
+    template matches(Target, string foo, Args...){
+        static if(s == "*")
+            alias matches = Alias!(is(seq!T == seq!Args));
+        else static if (s == "**")
+            alias matches = True;
+        else
+            alias matches = Alias!(s == foo && is(seq!T == seq!Args));
+    }
+};
 
 alias isAspect = and!(isClass, hasStereotype!(Aspect));
 
@@ -89,6 +151,15 @@ template mergeTypes(alias t1, alias t2){}
 template WeavingCommand(alias p, alias AdviceType at){
     alias pointcut = p;
     alias adviceType = at;
+
+    template matches(alias Target, string foo, Args...){
+        alias matches = p.matches!(Target, foo, Args);
+    }
+
+    template execute(alias Target, string foo, Args...){
+        pragma(msg, "weaving");
+        alias execute = Target;
+    }
 }
 
 template crossMergePointcuts(alias classPointcuts, alias methodPointcuts){
@@ -152,22 +223,10 @@ template crossMerge(alias classPointcuts, alias classAdviceTypes, alias methodPo
     alias crossMerge = iter1!();
 }
 
-//todo: probably move to ioc.meta
-template allMembersWithOverloads(alias Class){
-    alias memberNames = seq!(__traits(derivedMembers, Class)); //todo: allMembers?
-    template iter(int i=0, acc...){
-        static if (i<memberNames.length){
-            alias iter = iter!(i+1, __traits(getOverloads, Class, memberNames._[i]), acc);
-        } else
-            alias iter = acc;
-    }
-    alias allMembersWithOverloads = iter!();
-}
-
 template gatherCommandsFromAspectClass(alias AspectClass){
     alias classPointcuts = seq!(extractPointcuts!(AspectClass));
     alias classAdviceTypes = seq!(extractAdviceTypes!(AspectClass));
-    alias overloads = allMembersWithOverloads!(AspectClass);
+    alias overloads = derivedOverloads!(AspectClass);
     template iter(int i=0, acc...){
         static if (i<overloads.length){
             alias iter = iter!(i+1, crossMerge!(
@@ -187,7 +246,7 @@ template collectCommands(Aspects...) { //todo: constraint: all(isClass, Aspects)
         static if (i<Aspects.length) {
             alias aspect = Aspects[i];
             alias commands = gatherCommandsFromAspectClass!(aspect);
-            pragma(msg, "Aspect ", fullyQualifiedName!aspect, " introduces ", to!string(commands.length), " weaving command");
+            pragma(msg, "Aspect ", fullyQualifiedName!aspect, " introduces ", to!string(commands.length), " weaving command(s)");
             alias iter = iter!(i+1, commands, acc);
         } else
             alias iter = acc;
@@ -199,9 +258,37 @@ template Weaver(packageNames...) if (stringsOnly!(packageNames) && packageNames.
     alias Aspects = memberAliases!(isAspect, "ioc", packageNames);
     pragma(msg, "Aspects: ", Aspects);
     alias Commands = collectCommands!(Aspects);
-    pragma(msg, "Weaving commands: ", Commands.stringof);
+    pragma(msg, to!string(Commands.length), " weaving command(s) found based on ", to!string(Aspects.length), " aspect(s)");
+
+    template weaveInCommands(alias Target, string foo, Args...){
+        template iter(int i=0, alias acc){
+            static if (i<Commands.length) {
+                pragma(msg, "checking ", Commands[i].stringof, " against ", fullyQualifiedName!Target, "#" ,foo, "(", Args, ")");
+                alias cond = Commands[i].matches!(Target, foo, Args);
+                pragma(msg, "cond ", cond);
+                static if (cond) {
+                    pragma(msg, "yay!");
+                    alias iter = iter!(i+1, Commands[i].execute!(acc, foo, Args));
+                } else {
+                    pragma(msg, ":(");
+                    alias iter = iter!(i+1, acc);
+                }
+            } else
+                alias iter = acc;
+        }
+        alias weaveInCommands = iter!(0, Target);
+    }
 
     template weave(T){
-        alias weave = T;
+        alias overloads = interfaceOverloads!T;
+        template iter(int i=0, alias acc){
+            static if (i<overloads.length){
+                alias foo = Alias!(__traits(identifier, overloads[i]));
+                alias Args = Parameters!(overloads[i]);
+                alias iter = iter!(i+1, weaveInCommands!(T, foo, Args));
+            } else
+                alias iter = acc;
+        }
+        alias weave = iter!(0, T);
     }
 }
