@@ -51,7 +51,19 @@ template Importable(string modName, string memName){
     }
     
     template qualifies(alias qualifier){
-        alias qualifies = qualifier!(imported!());
+        template reallyQualifies(T...) {
+            static if (T.length == 1)
+                alias reallyQualifies = qualifier!(imported!());
+            else
+                alias reallyQualifies = False;
+        }
+        alias i =  imported!();
+        //static if (modName == "ioc.weaver") {
+            //pragma(msg, "memname ", memberName);
+            //static if (memberName == "PredefinedAdviceUtils")
+                //pragma(msg, i.stringof);
+        //}
+        alias qualifies = reallyQualifies!(i);
     }
 }
 
@@ -64,6 +76,8 @@ template foldAllMembers(string pkgName, alias qualifier, alias apply, initVal...
     template implApplyForModuleName(string modName, acc...){
         alias imported = aModule!(modName);
         alias members = aliasSeqOf!([__traits(allMembers, imported)]);
+        //static if (modName == "ioc.weaver")
+            //pragma(msg, "members ", members);
         template iter(int i, iterAcc...){
             static if (i<members.length){
                 alias importable = Importable!(modName, members[i]);

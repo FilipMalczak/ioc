@@ -210,3 +210,42 @@ template accepts(alias foo, T...){
         enum accepts = match!(0);
     }
 }
+
+/*
+template seq(T...){
+    struct seqImpl {
+        alias sequence = T;
+    }
+    alias seq = seqImpl;
+}*/
+
+template reverse(T...){
+    static if (T.length == 0)
+        alias reverse = T;
+    else
+        alias reverse = AliasSeq!(reverse(T[1..$]), T[0]);
+}
+
+struct seq(T...){
+    alias sequence = T;
+    alias _ = sequence;
+    alias length = Alias!(T.length);
+    alias empty = Alias!(length == 0);
+
+    template at(size_t i){
+        alias at = sequence[i];
+    }
+
+    //todo: test it
+    //todo: (apply, acc) or (acc, apply)? I'm mostly using the former, but ther latter makes more sense
+    //todo: use it
+    template fold(alias apply, initVal...){
+        template impl(int i=0, acc...){
+            static if (i<length)
+                alias impl = impl!(i+1, apply!(sequence[i]), acc);
+        }
+        alias fold = imp!(0, initVal);
+    }
+
+    template reversed() { alias reversed = seq!(reverse!(T)); }
+}

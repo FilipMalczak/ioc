@@ -10,6 +10,7 @@ version(unittest){
 
     import ioc.stdmeta;
     import ioc.meta;
+    public import ioc.meta: seq;
     import ioc.logging;
     
     struct GenericLogEntries(E) {
@@ -65,13 +66,6 @@ version(unittest){
                 alias inSeq = True;
             else
                 alias inSeq = inSeq!(val, seq[1..$]);
-    }
-
-    template seq(T...){
-        struct seqImpl {
-            alias sequence = T;
-        }
-        alias seq = seqImpl;
     }
 
     mixin template assertSequencesSetEqual(alias expected, alias result){

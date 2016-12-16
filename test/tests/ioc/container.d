@@ -8,7 +8,7 @@ import std.stdio;
 import poodinisTest.a;
 
 unittest {
-    auto c = new shared IocContainer!("toppkg", "poodinisTest")();
+    auto c = new shared IocContainer!("toppkg", "poodinisTest", "tests.aspects")();
     c.resolve!(I)().foo();
     assert(LogEntries.entries == ["foo in AComponent"]);
     LogEntries.reset();

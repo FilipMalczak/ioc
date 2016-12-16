@@ -48,7 +48,7 @@ interface Interceptor(Inter, string fooName, T...) if (is(Inter == interface)) {
     
 }
 
-class InterceptorAdapter(Inter, string fooName): Interceptor!(Inter, fooName){
+class InterceptorAdapter(Inter, string fooName, T...): Interceptor!(Inter, fooName, T){
     override void before(params p){}
     static if (is(returned == void))
         override returned after(params p){}
