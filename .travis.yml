@@ -1,4 +1,8 @@
 language: d
 d:
   - dmd # gdc and ldc support currently disabled, since they have no rdmd
-script: dub test
+
+script:
+ - dub test -b unittest-cov --compiler=${DC}
+after_success:
+ - bash <(curl -s https://codecov.io/bash)
