@@ -47,19 +47,20 @@ synchronized class IocContainer(packageNames...) if (stringsOnly!(packageNames) 
         }
     }
         
-    void register(T1)(){
-        poodinisContainer.register!(weaver.weave!(T1))();
+    void register(alias T1)(){
+        alias weaved = weaver.weave!(T1);
+        poodinisContainer.register!(weaved)();
     }
     
-    void bind(T1, T2)(){
+    void bind(alias T1, alias T2)(){
         poodinisContainer.register!(T1, weaver.weave!(T2))();
     }
     
-    void unregister(T1)(){
+    void unregister(alias T1)(){
         poodinisContainer.removeRegistration!(weaver.weave!(T1))();
     }
     
-    protected void bindIfPossible(I)(){
+    protected void bindIfPossible(alias I)(){
         template extends(T...) if (T.length == 1){
             static if (is(T[0]: I))
                 alias extends = True;
@@ -73,7 +74,7 @@ synchronized class IocContainer(packageNames...) if (stringsOnly!(packageNames) 
         }
     }
     
-    T resolve(T)(){
+    T resolve(alias T)(){
         return poodinisContainer.resolve!(T)();
     }
 }

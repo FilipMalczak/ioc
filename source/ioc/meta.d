@@ -144,7 +144,7 @@ struct Function {
     }
 }
 
-FunctionParameters functionParams(alias foo)(){
+FunctionParameters functionParams(alias foo, bool qualifiedNames = true)(){
     alias names = ParameterIdentifierTuple!foo;
     alias types = Parameters!foo;
     FunctionParameters result;
@@ -155,33 +155,39 @@ FunctionParameters functionParams(alias foo)(){
         param.name = name;
         if (param.name == "")
             param.name = "_unnamedParam_"~to!string(unnamedParams++);
-        param.type = fullyQualifiedName!(types[i]);
+        static if (qualifiedNames)
+            param.type = fullyQualifiedName!(types[i]);
+        else
+            param.type = (types[i]).stringof;
         result.parameters ~= param;
     }
     return result;
 }
 
-Function func(alias foo)(){
+Function func(alias foo, bool qualifiedNames = true)(){
     Function result;
-    result.parameters = functionParams!foo();
+    result.parameters = functionParams!(foo, qualifiedNames)();
     result.name = __traits(identifier, foo);
-    result.returnType = fullyQualifiedName!(ReturnType!foo);
+    static if (qualifiedNames)
+        result.returnType = fullyQualifiedName!(ReturnType!foo);
+    else
+        result.returnType = (ReturnType!foo).stringof;
     return result;
 }
 
-Function[] overloads(alias T, string name)(){
+Function[] overloads(alias T, string name, bool qualifiedNames = true)(){
     Function[] result = [];
     foreach (overload; __traits(getOverloads, T, name))
-        result ~= func!overload();
+        result ~= func!(overload, qualifiedNames)();
     return result;
 }
 
-Function[] overloads(string mod, string name)(){
-    return overloads!(aModule!(mod), name)();
+Function[] overloads(string mod, string name, bool qualifiedNames = true)(){
+    return overloads!(aModule!(mod), name, qualifiedNames)();
 }
 
-Function[] overloads(string name, string moduleName=__MODULE__, T=Function)(){
-    return overloads!(moduleName, name)();
+Function[] overloads(string name, string moduleName=__MODULE__, bool qualifiedNames = true)(){
+    return overloads!(moduleName, name, qualifiedNames)();
 }
 
 Function[] allInterfaceMethods(T)(){

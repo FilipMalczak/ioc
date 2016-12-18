@@ -38,16 +38,12 @@ template Pointcut(T...){
         template iter(int i=0){
             static if (i<matchers.length){
                 alias matcher = matchers[i];
-                pragma(msg, "matcher: ", matcher.stringof);
                 static if (matcher.matches!(Target, foo, Args)) {
-                    pragma(msg, "we need to go deeper");
                     alias iter = iter!(i+1);
                 } else {
-                    pragma(msg, "well, fuck");
                     alias iter = False;
                 }
             } else {
-                pragma(msg, "EMPTY");
                 alias iter = True;
             }
         }
@@ -148,17 +144,32 @@ template mergePointcuts(alias p1, alias p2){
 
 template mergeTypes(alias t1, alias t2){}
 
-template WeavingCommand(alias p, alias AdviceType at){
+struct WeavingCommand(alias p, alias AdviceType at, alias AspectType, string foo, Args...){
     alias pointcut = p;
     alias adviceType = at;
 
-    template matches(alias Target, string foo, Args...){
-        alias matches = p.matches!(Target, foo, Args);
+    template matches(alias Target, string method, MethodArgs...){
+        alias matches = p.matches!(Target, method, MethodArgs);
     }
 
-    template execute(alias Target, string foo, Args...){
-        pragma(msg, "weaving");
-        alias execute = Target;
+    template execute(alias Target, string method, MethodArgs...){
+        alias interceptor = Interceptor!(Target, method, false, MethodArgs);
+    
+        class WeavingInterceptor: InterceptorAdapter!(Target, method, false, MethodArgs) {
+            AspectType _aspectInstance = new AspectType();
+            alias _adviceMethod = getTarget!(_aspectInstance, foo, Args);
+            static if (adviceType == BEFORE) {
+                override void before(interceptor.params p){
+                    static if (Parameters!_adviceMethod.length == 0)
+                        //_adviceMethod(_aspectInstance);
+                        mixin("_aspectInstance."~foo~"();");
+                    else
+                        //_adviceMethod(_aspectInstance, p);
+                        mixin("_aspectInstance."~foo~"(p);");
+                }
+            }
+        }
+        alias execute = ExtendMethod!(Target, WeavingInterceptor, false);
     }
 }
 
@@ -205,14 +216,22 @@ template crossMergeTypes(alias classAdviceTypes, alias methodAdviceTypes){
     alias crossMergeTypes = iter1!();
 }
 
-template crossMerge(alias classPointcuts, alias classAdviceTypes, alias methodPointcuts, alias methodAdviceTypes){
+template crossMerge(alias classPointcuts, alias classAdviceTypes,
+                    alias methodPointcuts, alias methodAdviceTypes,
+                    alias AspectType, string foo, Args...){
     alias mergedPointcuts = crossMergePointcuts!(classPointcuts, methodPointcuts);
     alias mergedTypes = crossMergeTypes!(classAdviceTypes, methodAdviceTypes);
     template iter1(int i=0, acc1...){
         static if (i<mergedPointcuts.length){
             template iter2(int j=0, acc2...){
                 static if (j<mergedTypes.length)
-                    alias iter2 = iter2!(j+1, WeavingCommand!(mergedPointcuts[i], mergedTypes[j]), acc2);
+                    alias iter2 = iter2!(j+1,
+                        WeavingCommand!(
+                            mergedPointcuts[i], mergedTypes[j],
+                            AspectType, foo, Args
+                        ),
+                        acc2
+                    );
                 else
                     alias iter2 = acc2;
             }
@@ -234,6 +253,7 @@ template gatherCommandsFromAspectClass(alias AspectClass){
                 classAdviceTypes,
                 seq!(extractPointcuts!(overloads[i])),
                 seq!(extractAdviceTypes!(overloads[i])),
+                AspectClass, __traits(identifier, overloads[i]), Parameters!(overloads[i])
             ), acc);
         } else
             alias iter = acc;
@@ -263,14 +283,12 @@ template Weaver(packageNames...) if (stringsOnly!(packageNames) && packageNames.
     template weaveInCommands(alias Target, string foo, Args...){
         template iter(int i=0, alias acc){
             static if (i<Commands.length) {
-                pragma(msg, "checking ", Commands[i].stringof, " against ", fullyQualifiedName!Target, "#" ,foo, "(", Args, ")");
-                alias cond = Commands[i].matches!(Target, foo, Args);
-                pragma(msg, "cond ", cond);
+                alias cond = Alias!(Commands[i].matches!(Target, foo, Args));
                 static if (cond) {
-                    pragma(msg, "yay!");
+                    pragma(msg, "Command ", Commands[i], " will be executed for ", Target, "#", foo, "(", Args, ")");
                     alias iter = iter!(i+1, Commands[i].execute!(acc, foo, Args));
                 } else {
-                    pragma(msg, ":(");
+                    pragma(msg, "Command ", Commands[i], " will NOT be executed for ", Target, "#", foo, "(", Args, ")");
                     alias iter = iter!(i+1, acc);
                 }
             } else
