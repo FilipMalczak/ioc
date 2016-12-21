@@ -68,6 +68,12 @@ version(unittest){
                 alias inSeq = inSeq!(val, seq[1..$]);
     }
 
+    void assertSetsEqual(U: W, V: W, W)(U[] expected, V[] result){
+        assert(expected.length == result.length);
+        foreach (element; expected)
+            assert(result.canFind(element));
+    }
+
     mixin template assertSequencesSetEqual(alias expected, alias result){
         static assert (expected.sequence.length == result.sequence.length);
         mixin template iter(int i){

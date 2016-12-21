@@ -30,6 +30,8 @@ template Advice(alias AdviceType type){
 
 alias Before = Advice!BEFORE;
 alias After = Advice!AFTER;
+alias Throw = Advice!THROW;
+alias Finally = Advice!FINALLY;
 
 template Pointcut(T...){
     alias matchers = T;
@@ -136,11 +138,12 @@ template mergePointcuts(alias p1, alias p2){
     alias mergePointcuts = Pointcut!(p1.matchers, p2.matchers);
 }
 
-template mergeTypes(alias t1, alias t2){}
-
 struct WeavingCommand(alias p, alias AdviceType at, alias AspectType, string foo, Args...){
     alias pointcut = p;
     alias adviceType = at;
+    alias aspectClass = AspectType;
+    alias adviceMethodName = foo;
+    alias adviceMethodArgs = Args;
 
     template matches(alias Target, string method, MethodArgs...){
         alias matches = p.matches!(Target, method, MethodArgs);
@@ -225,9 +228,22 @@ template crossMergePointcuts(alias classPointcuts, alias methodPointcuts){
 }
 
 template crossMergeTypes(alias classAdviceTypes, alias methodAdviceTypes){
-    static if (classAdviceTypes.length * methodAdviceTypes.length == 0) 
-        alias crossMergeTypes = AliasSeq!(classAdviceTypes.sequence, methodAdviceTypes.sequence);
-    else {
+    template withoutNones(types...){
+        template iter(int i, acc...){
+            static if (i < types.length)
+                static if (types[i] > 0)
+                    alias iter = iter!(i+1, types[i], acc);
+                else
+                    alias iter = iter!(i+1, acc);
+            else
+                alias iter = acc;
+        }
+        alias withoutNones = iter!(0);
+    }
+    static if (classAdviceTypes.length * methodAdviceTypes.length == 0) {
+        alias crossMergeTypes = withoutNones!(classAdviceTypes.sequence, methodAdviceTypes.sequence);
+        
+    } else {
         template iter1(int i=0, acc1...){
             static if (i<classAdviceTypes.length){
                 template iter2(int j=0, acc2...){
@@ -236,8 +252,13 @@ template crossMergeTypes(alias classAdviceTypes, alias methodAdviceTypes){
                         alias methodType = methodAdviceTypes._[j];
                         //todo: alternative approach: skip clashing types
                         static assert (classType * methodType == 0);
-                        alias result = Alias!(cast(AdviceType)(classType + methodType));
-                        alias iter2 = iter2!(j+1, result, acc2);
+                        //todo: alternative approach: error on no real advice type
+                        static if (classType + methodType > 0) {
+                            alias result = Alias!(cast(AdviceType)(classType + methodType));
+                            alias iter2 = iter2!(j+1, result, acc2);
+                        } else {
+                            alias iter2 = iter2!(j+1, acc2);
+                        }
                     } else
                         alias iter2 = acc2;
                 }
