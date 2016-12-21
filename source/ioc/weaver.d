@@ -198,8 +198,7 @@ struct WeavingCommand(alias p, alias AdviceType at, alias AspectType, string foo
             }
         }
         mixin("class WeaverOf_"~AspectType.stringof~"_"~foo~" : WeavingInterceptor {}");
-        //alias execute = ExtendMethod!(Target, WeavingInterceptor, false);
-        mixin("alias execute = ExtendMethod!(Target, WeaverOf_"~AspectType.stringof~"_"~foo~", false);");
+        mixin("alias execute = ExtendMethod!(Target, WeaverOf_"~AspectType.stringof~"_"~foo~");");
     }
 }
 
