@@ -179,7 +179,7 @@ template ExtendMethod(alias Impl, alias TheInterceptor, bool qualifiedNames = tr
     }
 
     string className(){
-        return Impl.stringof ~ "_with_" ~ TheInterceptor.stringof;
+        return Impl.stringof ~ "__with__" ~ TheInterceptor.stringof;
     }
 
     version(unittest) {

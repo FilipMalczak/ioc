@@ -10,12 +10,11 @@ import poodinisTest.a;
 unittest {
     auto c = new shared IocContainer!("toppkg", "poodinisTest", "tests.aspects")();
     auto inst = c.resolve!(I)();
-//    writeln(c);
-    writeln(inst);
     inst.foo();
-    writeln(LogEntries.entries);
-    //assert(LogEntries.entries == ["foo in AComponent"]);
-    assert(LogEntries.entries == ["5", "6", "foo in AComponent"] || 
-            LogEntries.entries == ["6", "5", "foo in AComponent"]);
+    auto fooIdx = LogEntries.indexOf("foo in AComponent");
+    foreach (expectedBefore; ["B#advice2()", "B#advice()", "A#advice()", "MatchingByName#bar()", "MatchingByName#foo()"])
+        assert(LogEntries.indexOf(expectedBefore) < fooIdx);
+    foreach (expectedAfter; ["2", "3"])
+        assert(LogEntries.indexOf(expectedAfter) > fooIdx);
     LogEntries.reset();
 }

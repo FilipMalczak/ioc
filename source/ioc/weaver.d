@@ -59,19 +59,13 @@ template name(string s){
 
     //todo: rename to matchClassName
     bool match(string[] ruleParts, string[] targetParts){
-        //writeln("match ", ruleParts, " ; ", targetParts);
         if (ruleParts.length * targetParts.length == 0) {
-            //writeln("len * len == 0 : ", ruleParts, " ; ", targetParts);
-            //writeln("out ", ruleParts == targetParts);
             return ruleParts == targetParts;
         }
         if (ruleParts[0] == "**") {
-            //writeln("**");
             auto restOfRule = ruleParts[1..$];
             foreach (i; 0..targetParts.length+1) {
-                //writeln("i ",i);
                 if (match (restOfRule, targetParts[i..$])) {
-                    //writeln("i -> true");
                     return true;
                 }
             }
@@ -160,16 +154,52 @@ struct WeavingCommand(alias p, alias AdviceType at, alias AspectType, string foo
             alias _adviceMethod = getTarget!(_aspectInstance, foo, Args);
             static if (adviceType == BEFORE) {
                 override void before(interceptor.params p){
-                    static if (Parameters!_adviceMethod.length == 0)
-                        //_adviceMethod(_aspectInstance);
-                        mixin("_aspectInstance."~foo~"();");
-                    else
-                        //_adviceMethod(_aspectInstance, p);
+                    mixin("_aspectInstance."~foo~"(p);");
+                }
+            } else static if (adviceType == AFTER) {
+                static if (is(interceptor.returned == void)) {
+                    override void after(interceptor.params p){
                         mixin("_aspectInstance."~foo~"(p);");
+                    }
+                } else {
+                    static if (is(ReturnType!(_adviceMethod) == void)) 
+                        override interceptor.returned after(interceptor.params p, interceptor.returned r){
+                            //mixin("return _aspectInstance."~foo~"(p, r);");
+                            mixin("_aspectInstance."~foo~"(p, r);");
+                            return r;
+                        }
+                    else {
+                        override interceptor.returned after(interceptor.params p, interceptor.returned r){
+                            mixin("return _aspectInstance."~foo~"(p, r);");
+                        }
+                    }
+                }
+            } else static if (adviceType == THROW) {
+                static if (is(ReturnType!(_adviceMethod) == void)) {
+                    override interceptor.returned hijackException(Throwable t){
+                        static if (Parameters!_adviceMethod.length == 0)
+                            mixin("_aspectInstance."~foo~"();");
+                        else
+                            mixin("_aspectInstance."~foo~"(t);");
+                        throw t;
+                    }
+                } else {
+                    override interceptor.returned hijackException(Throwable t){
+                        static if (Parameters!_adviceMethod.length == 0)
+                            mixin("return _aspectInstance."~foo~"();");
+                        else
+                            mixin("return _aspectInstance."~foo~"(t);");
+                    }
+                }
+            } else static if (adviceType == FINALLY) {
+                override void scopeExit(params, Throwable){
+                    mixin("_aspectInstance."~foo~"();");
                 }
             }
         }
-        alias execute = ExtendMethod!(Target, WeavingInterceptor, false);
+        mixin("class WeaverOf_"~AspectType.stringof~"_"~foo~" : WeavingInterceptor {}");
+        //alias execute = ExtendMethod!(Target, WeavingInterceptor, false);
+        mixin("alias execute = ExtendMethod!(Target, WeaverOf_"~AspectType.stringof~"_"~foo~", false);");
     }
 }
 
@@ -196,24 +226,28 @@ template crossMergePointcuts(alias classPointcuts, alias methodPointcuts){
 }
 
 template crossMergeTypes(alias classAdviceTypes, alias methodAdviceTypes){
-    template iter1(int i=0, acc1...){
-        static if (i<classAdviceTypes.length){
-            template iter2(int j=0, acc2...){
-                static if (j<methodAdviceTypes.length) {
-                    alias classType = classAdviceTypes._[i];
-                    alias methodType = methodAdviceTypes._[j];
-                    //todo: alternative approach: skip clashing types
-                    static assert (classType * methodType == 0);
-                    alias result = Alias!(cast(AdviceType)(classType + methodType));
-                    alias iter2 = iter2!(j+1, result, acc2);
-                } else
-                    alias iter2 = acc2;
-            }
-            alias iter1 = iter1!(i+1, iter2!(), acc1);
-        } else
-            alias iter1 = acc1;
+    static if (classAdviceTypes.length * methodAdviceTypes.length == 0) 
+        alias crossMergeTypes = AliasSeq!(classAdviceTypes.sequence, methodAdviceTypes.sequence);
+    else {
+        template iter1(int i=0, acc1...){
+            static if (i<classAdviceTypes.length){
+                template iter2(int j=0, acc2...){
+                    static if (j<methodAdviceTypes.length) {
+                        alias classType = classAdviceTypes._[i];
+                        alias methodType = methodAdviceTypes._[j];
+                        //todo: alternative approach: skip clashing types
+                        static assert (classType * methodType == 0);
+                        alias result = Alias!(cast(AdviceType)(classType + methodType));
+                        alias iter2 = iter2!(j+1, result, acc2);
+                    } else
+                        alias iter2 = acc2;
+                }
+                alias iter1 = iter1!(i+1, iter2!(), acc1);
+            } else
+                alias iter1 = acc1;
+        }
+        alias crossMergeTypes = iter1!();
     }
-    alias crossMergeTypes = iter1!();
 }
 
 template crossMerge(alias classPointcuts, alias classAdviceTypes,
@@ -224,7 +258,7 @@ template crossMerge(alias classPointcuts, alias classAdviceTypes,
     template iter1(int i=0, acc1...){
         static if (i<mergedPointcuts.length){
             template iter2(int j=0, acc2...){
-                static if (j<mergedTypes.length)
+                static if (j<mergedTypes.length) {
                     alias iter2 = iter2!(j+1,
                         WeavingCommand!(
                             mergedPointcuts[i], mergedTypes[j],
@@ -232,7 +266,7 @@ template crossMerge(alias classPointcuts, alias classAdviceTypes,
                         ),
                         acc2
                     );
-                else
+                } else
                     alias iter2 = acc2;
             }
             alias iter1 = iter1!(i+1, iter2!(), acc1);
@@ -285,10 +319,8 @@ template Weaver(packageNames...) if (stringsOnly!(packageNames) && packageNames.
             static if (i<Commands.length) {
                 alias cond = Alias!(Commands[i].matches!(Target, foo, Args));
                 static if (cond) {
-                    pragma(msg, "Command ", Commands[i], " will be executed for ", Target, "#", foo, "(", Args, ")");
                     alias iter = iter!(i+1, Commands[i].execute!(acc, foo, Args));
                 } else {
-                    pragma(msg, "Command ", Commands[i], " will NOT be executed for ", Target, "#", foo, "(", Args, ")");
                     alias iter = iter!(i+1, acc);
                 }
             } else

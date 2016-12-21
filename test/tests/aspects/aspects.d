@@ -18,11 +18,15 @@ class WithWildcard{}
 @Pointcut!(name!("poodinisTest.b.AComponent"))
 class MatchingByName {
     @Before
-    void foo(){}
+    void foo(){
+        LogEntries.add("MatchingByName#foo()");
+    }
 
     @Before
     @Pointcut!(method!("foo"))
-    void bar(){}
+    void bar(){
+        LogEntries.add("MatchingByName#bar()");
+    }
 }
 
 @Aspect
@@ -31,11 +35,13 @@ class NotMatchingAtAll{}
 
 
 @Aspect
-@Pointcut!(name!("a.b.C"), method!("foo"))
+@Pointcut!(name!("poodinisTest.b.AComponent"), method!("foo"))
 class A {
+    
+    @Advice
     @Before
     void advice(){
-        LogEntries.add("1");
+        LogEntries.add("A#advice()");
     }
 
     @After
@@ -61,15 +67,13 @@ class A {
 class B {
     @Advice
     void advice(){
-        writeln("ADVICE");
-        LogEntries.add("5");
+        LogEntries.add("B#advice()");
     }
 
     @Advice
     @Pointcut!(name!"**.b.*")
     void advice2(){
-        writeln("ADVICE2");
-        LogEntries.add("6");    
+        LogEntries.add("B#advice2()");
     }
 
 }

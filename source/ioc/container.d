@@ -49,7 +49,7 @@ synchronized class IocContainer(packageNames...) if (stringsOnly!(packageNames) 
         
     void register(alias T1)(){
         alias weaved = weaver.weave!(T1);
-        poodinisContainer.register!(weaved)();
+        poodinisContainer.register!(T1, weaved)();
     }
     
     void bind(alias T1, alias T2)(){
