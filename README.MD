@@ -1,3 +1,4 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/a44012e468534c10a13853f5f31cc634)](https://www.codacy.com/app/filip-malczak/ioc?utm_source=github.com&utm_medium=referral&utm_content=FilipMalczak/ioc&utm_campaign=badger)
 # ioc [![Build Status](https://travis-ci.org/FilipMalczak/ioc.svg?branch=master)](https://travis-ci.org/FilipMalczak/ioc)
 Slow approach to Inversion of Control in D2 language
 
