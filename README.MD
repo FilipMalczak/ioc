@@ -1,4 +1,11 @@
-# ioc [![Build Status](https://travis-ci.org/FilipMalczak/ioc.svg?branch=master)](https://travis-ci.org/FilipMalczak/ioc)
+# ioc 
+
+[![Build Status](https://travis-ci.org/FilipMalczak/ioc.svg?branch=master)](https://travis-ci.org/FilipMalczak/ioc)
+[![Stories in Ready](https://badge.waffle.io/FilipMalczak/ioc.png?label=ready&title=Ready)](http://waffle.io/FilipMalczak/ioc)
+[![Codecov branch](https://img.shields.io/codecov/c/github/FilipMalczak/ioc/master.svg)](https://github.com/FilipMalczak/ioc)
+[![license](https://img.shields.io/github/license/FilipMalczak/ioc.svg)](https://github.com/FilipMalczak/ioc)
+
+
 Slow approach to Inversion of Control in D2 language
 
 # Features
