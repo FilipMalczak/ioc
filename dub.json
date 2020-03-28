@@ -3,6 +3,7 @@
     "targetName": "ioc",
     "targetType": "executable",
     "targetPath": "bin",
+    "license": "Apache 2.0",
     "preGenerateCommands": ["rdmd generate_index.d source"],
     "dflags": ["-d"],
     "dependencies": {
