@@ -4,6 +4,7 @@
     "targetType": "executable",
     "targetPath": "bin",
     "license": "Apache 2.0",
+    "description": "Old project that had some useful metaprogramming utils",
     "preGenerateCommands": ["rdmd generate_index.d source"],
     "dflags": ["-d"],
     "dependencies": {
